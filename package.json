@@ -1,6 +1,6 @@
 {
-  "name": "opencode-background-agent",
-  "version": "0.2.0",
+  "name": "@paulp-o/opencode-background-agent",
+  "version": "0.1.0",
   "description": "Background task management plugin for OpenCode AI",
   "type": "module",
   "main": "./dist/index.js",
@@ -29,8 +29,12 @@
   "author": "paulpark",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/paulpark/opencode-background-agent.git"
+    "url": "git+https://github.com/paulp-o/opencode-background-task.git"
   },
+  "bugs": {
+    "url": "https://github.com/paulp-o/opencode-background-task/issues"
+  },
+  "homepage": "https://github.com/paulp-o/opencode-background-task#readme",
   "peerDependencies": {
     "@opencode-ai/plugin": "^1.0.0"
   },

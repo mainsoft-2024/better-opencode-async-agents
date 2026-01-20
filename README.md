@@ -1,16 +1,16 @@
 # opencode-background-agent
 
-![npm version](https://img.shields.io/npm/v/opencode-background-agent)
-![license](https://img.shields.io/npm/l/opencode-background-agent)
+[![npm version](https://img.shields.io/npm/v/@paulp-o/opencode-background-agent)](https://www.npmjs.com/package/@paulp-o/opencode-background-agent)
+[![license](https://img.shields.io/npm/l/@paulp-o/opencode-background-agent)](https://github.com/paulp-o/opencode-background-task/blob/main/LICENSE)
 
 Background task management plugin for OpenCode AI. Launch async agent tasks that run in parallel while you continue with other work.
 
 ## Installation
 
 ```bash
-npm install opencode-background-agent
+npm install @paulp-o/opencode-background-agent
 # or
-bun add opencode-background-agent
+bun add @paulp-o/opencode-background-agent
 ```
 
 ## Configuration
@@ -19,7 +19,7 @@ Add the plugin to your `opencode.json`:
 
 ```json
 {
-  "plugin": ["opencode-background-agent"]
+  "plugin": ["@paulp-o/opencode-background-agent"]
 }
 ```
 
@@ -173,4 +173,4 @@ MIT
 
 ## Support
 
-For issues, questions, or contributions, please visit the [GitHub repository](https://github.com/paulpark/opencode-background-agent).
+For issues, questions, or contributions, please visit the [GitHub repository](https://github.com/paulp-o/opencode-background-task).
