@@ -30,6 +30,7 @@ Add the plugin to your `opencode.json(c)`:
 - **`background_task(description: string, prompt: string, agent: string)`**: Launch async background agent tasks
 - **`background_output(task_id: string, block: boolean, timeout?: number)`**: Get task results (blocking/non-blocking)
 - **`background_cancel(task_id: string)`**: Cancel running tasks
+- **`background_resume(task_id: string, message: string, block?: boolean, timeout?: number)`**: Resume a completed task with a follow-up message for multi-turn conversations
 - **`background_list(status?: "running" | "completed" | "error" | "cancelled")`**: List all tasks with status filter
 - **`background_clear()`**: Abort and clear all tasks
 

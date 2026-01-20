@@ -1,10 +1,10 @@
-import { tool, type Plugin, type PluginInput } from "@opencode-ai/plugin";
+import { type Plugin, type PluginInput, tool } from "@opencode-ai/plugin";
 
 // =============================================================================
 // Types
 // =============================================================================
 
-type BackgroundTaskStatus = "running" | "completed" | "error" | "cancelled";
+type BackgroundTaskStatus = "running" | "completed" | "error" | "cancelled" | "resumed";
 
 interface TaskProgress {
   toolCalls: number;
@@ -29,6 +29,7 @@ interface BackgroundTask {
   error?: string;
   progress?: TaskProgress;
   batchId: string;
+  resumeCount: number;
 }
 
 interface LaunchInput {
@@ -47,7 +48,6 @@ type OpencodeClient = PluginInput["client"];
 // =============================================================================
 
 const COMPLETION_DISPLAY_DURATION = 10000;
-const RESULT_RETENTION_DURATION = 30 * 60 * 1000;
 const SPINNER_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
 
 // =============================================================================
@@ -58,7 +58,7 @@ class BackgroundManager {
   private client: OpencodeClient;
   private directory: string;
   private pollingInterval?: Timer;
-  private animationFrame: number = 0;
+  private animationFrame = 0;
   private currentBatchId: string | null = null;
 
   // In-memory task storage
@@ -147,6 +147,7 @@ class BackgroundManager {
       status: "running",
       startedAt: new Date().toISOString(),
       batchId,
+      resumeCount: 0,
       progress: {
         toolCalls: 0,
         lastTools: [],
@@ -268,6 +269,184 @@ class BackgroundManager {
 
     this.tasks.clear();
     this.originalParentSessionID = null;
+  }
+
+  async checkSessionExists(sessionID: string): Promise<boolean> {
+    try {
+      const result = await this.client.session.get({ path: { id: sessionID } });
+      return !result.error && !!result.data;
+    } catch {
+      return false;
+    }
+  }
+
+  async sendResumePrompt(
+    task: BackgroundTask,
+    message: string,
+    timeoutMs: number
+  ): Promise<string> {
+    const startTime = Date.now();
+
+    await this.client.session.promptAsync({
+      path: { id: task.sessionID },
+      body: {
+        agent: task.agent,
+        tools: {
+          background_task: false,
+          background_output: false,
+          background_cancel: false,
+          background_list: false,
+          background_clear: false,
+          background_resume: false,
+        },
+        parts: [{ type: "text", text: message }],
+      },
+    });
+
+    const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+    while (Date.now() - startTime < timeoutMs) {
+      await delay(500);
+
+      const statusResult = await this.client.session.status();
+      const allStatuses = (statusResult.data ?? {}) as Record<string, { type: string }>;
+      const sessionStatus = allStatuses[task.sessionID];
+
+      if (sessionStatus?.type === "idle") {
+        const messages = await this.getTaskMessages(task.sessionID);
+        const assistantMessages = messages.filter((m) => m.info?.role === "assistant");
+        if (assistantMessages.length > 0) {
+          const lastMessage = assistantMessages[assistantMessages.length - 1];
+          const textParts = lastMessage?.parts?.filter((p) => p.type === "text") ?? [];
+          const textContent = textParts
+            .map((p) => p.text ?? "")
+            .filter((text) => text.length > 0)
+            .join("\n");
+
+          return `✓ **Resume Response** (count: ${task.resumeCount})
+
+Task ID: \`${task.id}\`
+
+---
+
+${textContent || "(No text output)"}`;
+        }
+        return `✓ **Resume completed** (count: ${task.resumeCount}) - No response text found.`;
+      }
+    }
+
+    throw new Error(`Timeout exceeded (${timeoutMs}ms) waiting for resume response`);
+  }
+
+  sendResumePromptAsync(
+    task: BackgroundTask,
+    message: string,
+    toolContext: { sessionID: string; agent: string }
+  ): void {
+    this.client.session
+      .promptAsync({
+        path: { id: task.sessionID },
+        body: {
+          agent: task.agent,
+          tools: {
+            background_task: false,
+            background_output: false,
+            background_cancel: false,
+            background_list: false,
+            background_clear: false,
+            background_resume: false,
+          },
+          parts: [{ type: "text", text: message }],
+        },
+      })
+      .then(() => {
+        this.waitForResumeCompletion(task, toolContext);
+      })
+      .catch((error) => {
+        task.status = "completed";
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        this.notifyResumeError(task, errorMessage, toolContext);
+      });
+  }
+
+  private waitForResumeCompletion(
+    task: BackgroundTask,
+    toolContext: { sessionID: string; agent: string }
+  ): void {
+    const checkStatus = async () => {
+      try {
+        const statusResult = await this.client.session.status();
+        const allStatuses = (statusResult.data ?? {}) as Record<string, { type: string }>;
+        const sessionStatus = allStatuses[task.sessionID];
+
+        if (sessionStatus?.type === "idle") {
+          task.status = "completed";
+          this.notifyResumeComplete(task, toolContext);
+        } else {
+          setTimeout(checkStatus, 500);
+        }
+      } catch {
+        task.status = "completed";
+        this.notifyResumeError(task, "Error checking session status", toolContext);
+      }
+    };
+
+    setTimeout(checkStatus, 500);
+  }
+
+  private async notifyResumeComplete(
+    task: BackgroundTask,
+    toolContext: { sessionID: string; agent: string }
+  ): Promise<void> {
+    try {
+      const messages = await this.getTaskMessages(task.sessionID);
+      const assistantMessages = messages.filter((m) => m.info?.role === "assistant");
+      let responsePreview = "(No response)";
+
+      if (assistantMessages.length > 0) {
+        const lastMessage = assistantMessages[assistantMessages.length - 1];
+        const textParts = lastMessage?.parts?.filter((p) => p.type === "text") ?? [];
+        const textContent = textParts
+          .map((p) => p.text ?? "")
+          .filter((text) => text.length > 0)
+          .join("\n");
+        responsePreview = textContent.slice(0, 500) + (textContent.length > 500 ? "..." : "");
+      }
+
+      const notification = `[BACKGROUND RESUME COMPLETED] Task "${task.description}" resume #${task.resumeCount} finished. Use background_output(task_id="${task.id}") for full response.\n\nPreview:\n${responsePreview}`;
+
+      await this.client.session.prompt({
+        path: { id: toolContext.sessionID },
+        body: {
+          agent: toolContext.agent,
+          parts: [{ type: "text", text: notification }],
+        },
+        query: { directory: this.directory },
+      });
+    } catch {
+      // Ignore notification errors
+    }
+  }
+
+  private async notifyResumeError(
+    task: BackgroundTask,
+    errorMessage: string,
+    toolContext: { sessionID: string; agent: string }
+  ): Promise<void> {
+    try {
+      const notification = `[BACKGROUND RESUME FAILED] Task "${task.description}" resume #${task.resumeCount} failed: ${errorMessage}`;
+
+      await this.client.session.prompt({
+        path: { id: toolContext.sessionID },
+        body: {
+          agent: toolContext.agent,
+          parts: [{ type: "text", text: notification }],
+        },
+        query: { directory: this.directory },
+      });
+    } catch {
+      // Ignore notification errors
+    }
   }
 
   handleEvent(event: {
@@ -414,19 +593,14 @@ class BackgroundManager {
       // Check if any running tasks remain
       const hasRunningTasks = this.getTasksArray().some((t) => t.status === "running");
 
-      // Clean up old completed tasks when no running tasks
+      // Clean up old completed tasks when no running tasks (only after result retrieved)
       if (!hasRunningTasks) {
         for (const [taskId, task] of this.tasks) {
           if (task.status !== "running" && task.completedAt) {
-            const completedTime = new Date(task.completedAt).getTime();
             if (
               task.resultRetrievedAt &&
               now - new Date(task.resultRetrievedAt).getTime() > COMPLETION_DISPLAY_DURATION
             ) {
-              this.tasks.delete(taskId);
-              continue;
-            }
-            if (!task.resultRetrievedAt && now - completedTime > RESULT_RETENTION_DURATION) {
               this.tasks.delete(taskId);
             }
           }
@@ -716,6 +890,8 @@ function getStatusIcon(status: BackgroundTaskStatus): string {
       return "✗";
     case "cancelled":
       return "⊘";
+    case "resumed":
+      return "↻";
   }
 }
 
@@ -1025,6 +1201,79 @@ Status: ⊘ cancelled`;
   });
 }
 
+function createBackgroundResume(manager: BackgroundManager) {
+  return tool({
+    description: `Resume a completed background task with a follow-up message.
+
+Sends a new prompt to the subagent session and retrieves the response.
+Only completed tasks can be resumed. The task's conversation history is preserved.
+
+Arguments:
+- task_id: Required task ID to resume
+- message: Follow-up prompt to send (same format as background_task prompt)
+- block: If true, wait for response. If false (default), return immediately and notify on completion.
+- timeout: Max wait time in ms when blocking (default: 60000, max: 600000)
+
+Returns:
+- When blocking: Waits for response, then returns only the new response
+- When not blocking: Returns immediately, notifies parent session when response is ready`,
+    args: {
+      task_id: tool.schema.string().nonoptional(),
+      message: tool.schema.string().nonoptional(),
+      block: tool.schema.boolean().optional(),
+      timeout: tool.schema.number().optional(),
+    },
+    async execute(
+      args: { task_id: string; message: string; block?: boolean; timeout?: number },
+      toolContext
+    ) {
+      const task = manager.getTask(args.task_id);
+      if (!task) {
+        return `Task not found: ${args.task_id}`;
+      }
+
+      if (task.status === "resumed") {
+        return `Task is currently being resumed. Wait for completion before sending another message.`;
+      }
+
+      if (task.status !== "completed") {
+        return `Cannot resume task: status is "${task.status}". Only completed tasks can be resumed.`;
+      }
+
+      const shouldBlock = args.block === true;
+      const timeoutMs = Math.min(args.timeout ?? 60000, 600000);
+
+      task.status = "resumed";
+      task.resumeCount++;
+
+      try {
+        const sessionCheck = await manager.checkSessionExists(task.sessionID);
+        if (!sessionCheck) {
+          task.status = "completed";
+          return `Session expired or was deleted. Start a new background_task to continue.`;
+        }
+
+        if (shouldBlock) {
+          const response = await manager.sendResumePrompt(task, args.message, timeoutMs);
+          task.status = "completed";
+          return response;
+        }
+
+        manager.sendResumePromptAsync(task, args.message, toolContext);
+        return `⏳ **Resume initiated**
+Task ID: \`${task.id}\`
+Resume count: ${task.resumeCount}
+
+Follow-up prompt sent. You'll be notified when the response is ready.`;
+      } catch (error) {
+        task.status = "completed";
+        const message = error instanceof Error ? error.message : String(error);
+        return `Error resuming task: ${message}`;
+      }
+    },
+  });
+}
+
 function createBackgroundClear(manager: BackgroundManager) {
   return tool({
     description: `Clear and abort all background tasks immediately.
@@ -1128,6 +1377,7 @@ const BackgroundAgentPlugin: Plugin = async (ctx) => {
       background_task: createBackgroundTask(manager),
       background_output: createBackgroundOutput(manager),
       background_cancel: createBackgroundCancel(manager),
+      background_resume: createBackgroundResume(manager),
       background_list: createBackgroundList(manager),
       background_clear: createBackgroundClear(manager),
     },

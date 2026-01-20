@@ -86,8 +86,4 @@ The system SHALL allow retrieval of task results after completion, with tasks pe
 - **WHEN** user retrieves results with block=false and task completes
 - **THEN** notification is sent to parent session
 
-## REMOVED Requirements
 
-### Requirement: Handle expired results
-**Reason**: Session expiration conflicts with multi-turn conversation workflows. Tasks should persist indefinitely until explicitly cleared.
-**Migration**: Tasks are now cleaned up only via `background_clear` or when parent session ends. No automatic time-based expiration.
