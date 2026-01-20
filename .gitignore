@@ -141,3 +141,7 @@ temp/
 
 # Local/private files (not committed)
 .local/
+
+# docs
+docs/
+.cursor/
