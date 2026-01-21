@@ -144,4 +144,4 @@ temp/
 
 # docs
 docs/
-.cursor/
+.cursor/.npmrc

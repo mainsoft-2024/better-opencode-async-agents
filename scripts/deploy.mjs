@@ -57,19 +57,18 @@ const ensureTagAvailable = (tag) => {
   }
 };
 
-const ensureNpmAuth = () => {
-  if (process.env.NPM_TOKEN) {
-    console.log("✓ NPM_TOKEN found in environment");
-    return;
-  }
-  try {
-    const user = execSync("npm whoami", { encoding: "utf8" }).trim();
-    console.log(`✓ Logged in to npm as: ${user}`);
-  } catch {
-    console.error("Not authenticated to npm.");
-    console.error("Either set NPM_TOKEN env var or run 'npm login' first.");
+const setupNpmAuth = () => {
+  const token = process.env.NPM_TOKEN;
+  if (!token) {
+    console.error("NPM_TOKEN environment variable is required.");
+    console.error("Set it in your .zshrc or .bashrc:");
+    console.error('  export NPM_TOKEN="npm_xxxx..."');
     process.exit(1);
   }
+
+  const npmrcPath = resolve(rootDir, ".npmrc");
+  writeFileSync(npmrcPath, `//registry.npmjs.org/:_authToken=${token}\n`, "utf8");
+  console.log("✓ .npmrc configured with NPM_TOKEN (2FA bypass)");
 };
 
 const updateVersion = (path) => {
@@ -82,7 +81,7 @@ const pkgPath = resolve(rootDir, "package.json");
 
 ensureCleanGit();
 ensureTagAvailable(`v${version}`);
-ensureNpmAuth();
+setupNpmAuth();
 
 updateVersion(pkgPath);
 
