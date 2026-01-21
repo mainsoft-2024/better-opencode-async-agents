@@ -1,16 +1,36 @@
 # npm-release Specification
 
 ## Purpose
-TBD - created by archiving change add-npm-release-system. Update Purpose after archive.
+Defines the npm package build, validation, and release workflow for the background agent plugin.
+
 ## Requirements
+
 ### Requirement: Package Build
-The system SHALL compile TypeScript source code into publishable JavaScript with type declarations.
+The system SHALL compile TypeScript source code into publishable JavaScript with type declarations, using minification and source maps for optimal distribution.
 
 #### Scenario: Build ESM module
 - **WHEN** developer runs the build command
 - **THEN** system compiles `src/index.ts` to `dist/index.js` as ESM module
 - **AND** generates `dist/index.d.ts` type declaration file
 - **AND** build completes without errors
+
+#### Scenario: Build with minification
+- **WHEN** developer runs the build command
+- **THEN** system minifies the output bundle using `--minify` flag
+- **AND** bundle size is reduced by approximately 50% compared to unminified output
+- **AND** minification does not affect runtime behavior
+
+#### Scenario: Build with source maps
+- **WHEN** developer runs the build command
+- **THEN** system generates linked source map file `dist/index.js.map`
+- **AND** source map enables debugging of minified code back to original TypeScript
+- **AND** source map file is included in published package
+
+#### Scenario: Multi-file source bundling
+- **WHEN** source code is organized across multiple files and directories
+- **THEN** build process bundles all modules into single `dist/index.js` file
+- **AND** all exports from `src/index.ts` are preserved in the bundle
+- **AND** tree-shaking removes unused code from final bundle
 
 #### Scenario: Clean build
 - **WHEN** developer runs clean command before build
@@ -140,11 +160,10 @@ The system SHALL configure package.json for proper npm distribution.
 - **WHEN** package is published to npm
 - **THEN** only specified files are included: `dist/`, `README.md`, `LICENSE`, `CHANGELOG.md`
 - **AND** source files, tests, and configuration are excluded
-- **AND** package size is minimized
+- **AND** package size is minimized through minification
 
 #### Scenario: Configure peer dependencies
 - **WHEN** package is installed by consumer
 - **THEN** `@opencode-ai/plugin` is listed as peer dependency
 - **AND** consumer receives warning if peer dependency not installed
 - **AND** no version conflicts occur with host application
-

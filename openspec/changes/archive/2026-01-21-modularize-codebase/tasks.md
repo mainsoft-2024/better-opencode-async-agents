@@ -48,7 +48,7 @@
 - [x] 7.3 Run `bun test` - all 45 tests pass (4 test files)
 - [x] 7.4 Run `bun run build` - single file output (261KB minified)
 - [x] 7.5 Verify bundle size reduced with minification (42% reduction: 446KB → 261KB)
-- [ ] 7.6 Test plugin works in OpenCode (deferred to manual testing)
+- [x] 7.6 Test plugin works in OpenCode (tested - fixed export bug in v0.1.3)
 
 ## 8. Cleanup
 - [x] 8.1 Remove any dead code from original index.ts (replaced entirely)
