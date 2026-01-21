@@ -1,14 +1,14 @@
 #!/usr/bin/env node
-import { execSync } from "node:child_process";
-import { readFileSync, writeFileSync } from "node:fs";
-import { resolve } from "node:path";
+/* eslint-env node */
+import { execSync } from "child_process";
+import { readFileSync, writeFileSync } from "fs";
+import { resolve } from "path";
 
 const rootDir = resolve(process.cwd());
 const version = process.argv[2];
 
 if (!version) {
   console.error("Usage: node scripts/deploy.mjs <version>");
-  console.error("Example: node scripts/deploy.mjs 1.0.0");
   process.exit(1);
 }
 
@@ -57,15 +57,6 @@ const ensureTagAvailable = (tag) => {
   }
 };
 
-const ensureNpmLoggedIn = () => {
-  try {
-    execSync("npm whoami", { encoding: "utf8" });
-  } catch {
-    console.error("Not logged in to npm. Run 'npm login' first.");
-    process.exit(1);
-  }
-};
-
 const updateVersion = (path) => {
   const pkg = readJson(path);
   pkg.version = version;
@@ -76,21 +67,19 @@ const pkgPath = resolve(rootDir, "package.json");
 
 ensureCleanGit();
 ensureTagAvailable(`v${version}`);
-ensureNpmLoggedIn();
 
 updateVersion(pkgPath);
 
 console.log(`\n🚀 Ready to release version ${version}?`);
 console.log(`📦 Package: @paulp-o/opencode-background-agent@${version}`);
-console.log("\n⚠️  This will:");
-console.log("   - Update package version");
-console.log("   - Run typecheck and tests");
-console.log("   - Build the package");
-console.log("   - Commit and tag the release");
-console.log("   - Publish to npm");
-console.log("   - Push to GitHub");
-console.log("   - Create GitHub release");
-console.log("\nStarting release in 3 seconds... (Ctrl+C to cancel)");
+console.log(`\n⚠️  This will:`);
+console.log(`   - Update package version`);
+console.log(`   - Run typecheck and tests`);
+console.log(`   - Build the package`);
+console.log(`   - Commit and tag the release`);
+console.log(`   - Publish to npm`);
+console.log(`   - Push to GitHub`);
+console.log(`\nStarting release in 3 seconds... (Ctrl+C to cancel)`);
 
 await new Promise((resolve) => {
   setTimeout(resolve, 3000);
@@ -111,10 +100,41 @@ run("npm publish --access public");
 
 run("git push origin HEAD --tags");
 
-run(`gh release create v${version} --title "Release v${version}" --generate-notes`);
-
-console.log(`\n✅ Release v${version} complete!`);
-console.log("📦 npm: https://www.npmjs.com/package/@paulp-o/opencode-background-agent");
+console.log(`\n📝 Release created! Now create release notes:`);
+console.log(`   1. Write release notes in RELEASE_NOTES.md`);
 console.log(
-  `🐙 GitHub: https://github.com/paulp-o/opencode-background-agent/releases/tag/v${version}`
+  `   2. Run: gh release create v${version} --title "Release v${version}" --notes-file RELEASE_NOTES.md`
 );
+console.log(`   3. Or edit release notes directly on GitHub`);
+
+const releaseNotesPath = resolve(rootDir, "RELEASE_NOTES.md");
+const defaultNotes = `# Release v${version}
+
+## What's New
+-
+
+## Bug Fixes
+-
+
+## Improvements
+-
+
+## Breaking Changes
+-
+
+## Installation
+\`\`\`bash
+npm install @paulp-o/opencode-background-agent@${version}
+\`\`\`
+`;
+
+try {
+  writeFileSync(releaseNotesPath, defaultNotes, "utf8");
+  console.log(`\n📄 Template release notes created at: RELEASE_NOTES.md`);
+  console.log(`   Edit this file with your release notes, then run:`);
+  console.log(
+    `   gh release create v${version} --title "Release v${version}" --notes-file RELEASE_NOTES.md`
+  );
+} catch (error) {
+  console.log(`\n⚠️  Could not create RELEASE_NOTES.md template: ${error.message}`);
+}
