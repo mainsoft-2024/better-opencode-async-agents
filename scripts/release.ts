@@ -11,9 +11,9 @@
  *   - NPM_TOKEN environment variable set (for publishing)
  */
 
-import { $ } from "bun";
 import { readFileSync, writeFileSync } from "fs";
 import { join } from "path";
+import { $ } from "bun";
 
 // Configuration
 const ROOT_DIR = join(import.meta.dir, "..");
@@ -135,10 +135,10 @@ async function determineVersionBump(): Promise<VersionBump> {
   step("Determining version bump from commits");
 
   // Get commits since last tag
-  const { stdout: lastTag, exitCode } = await exec(
-    "git describe --tags --abbrev=0 2>/dev/null",
-    { silent: true, allowFailure: true }
-  );
+  const { stdout: lastTag, exitCode } = await exec("git describe --tags --abbrev=0 2>/dev/null", {
+    silent: true,
+    allowFailure: true,
+  });
 
   const range = exitCode === 0 ? `${lastTag}..HEAD` : "HEAD";
   const { stdout: commits } = await exec(`git log ${range} --pretty=format:"%s"`, {
@@ -221,17 +221,17 @@ async function publishToNpm(): Promise<void> {
 
   if (isDryRun) {
     warn("Dry run: Running npm publish --dry-run");
-    await exec("npm publish --dry-run");
+    await exec("npm publish --access public --dry-run");
     return;
   }
 
-  if (!process.env.NPM_TOKEN) {
-    error("NPM_TOKEN environment variable is not set");
-    error("Set it with: export NPM_TOKEN=npm_xxxxx");
+  const { exitCode } = await exec("npm whoami", { silent: true, allowFailure: true });
+  if (exitCode !== 0) {
+    error("Not logged in to npm. Run 'npm login' first.");
     process.exit(1);
   }
 
-  await exec("npm publish");
+  await exec("npm publish --access public");
   success("Published to npm");
 }
 
@@ -247,6 +247,24 @@ async function pushToRemote(version: string): Promise<void> {
   await exec("git push --tags");
 
   success(`Pushed v${version} to remote`);
+}
+
+async function createGitHubRelease(version: string): Promise<void> {
+  step("Creating GitHub release");
+
+  if (isDryRun) {
+    warn("Dry run: Skipping GitHub release");
+    return;
+  }
+
+  const { exitCode: ghCheck } = await exec("which gh", { silent: true, allowFailure: true });
+  if (ghCheck !== 0) {
+    warn("gh CLI not found, skipping GitHub release");
+    return;
+  }
+
+  await exec(`gh release create v${version} --title "Release v${version}" --generate-notes`);
+  success(`Created GitHub release: v${version}`);
 }
 
 async function main(): Promise<void> {
@@ -275,6 +293,7 @@ async function main(): Promise<void> {
     await createGitCommitAndTag(version);
     await publishToNpm();
     await pushToRemote(version);
+    await createGitHubRelease(version);
 
     log("\n╔═══════════════════════════════════════════╗", "green");
     log(`║  ✓ Release v${version} complete!`.padEnd(44) + "║", "green");
