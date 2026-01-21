@@ -143,4 +143,6 @@ temp/
 .local/
 
 # docs
-.cursor/.npmrc
+.cursor/
+.npmrc
+.docs/
