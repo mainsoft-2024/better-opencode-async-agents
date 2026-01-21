@@ -47,7 +47,10 @@ export async function pollRunningTasks(
   clearAllTasks: () => void,
   stopPolling: () => void,
   showProgressToast: (allTasks: BackgroundTask[]) => void,
-  getTasksArray: () => BackgroundTask[]
+  getTasksArray: () => BackgroundTask[],
+  getTaskMessages?: (
+    sessionID: string
+  ) => Promise<Array<{ info?: { role?: string }; parts?: Array<{ type?: string; text?: string }> }>>
 ): Promise<void> {
   try {
     const statusResult = await client.session.status();
@@ -87,6 +90,27 @@ export async function pollRunningTasks(
       const sessionStatus = allStatuses[task.sessionID];
 
       if (!sessionStatus) {
+        // Fallback: if session isn't in the status response, it may have completed.
+        // Check if there are assistant messages (indicating the agent responded and finished).
+        if (getTaskMessages) {
+          try {
+            const messages = await getTaskMessages(task.sessionID);
+            const hasAssistantResponse = messages.some(
+              (m) =>
+                m.info?.role === "assistant" &&
+                m.parts?.some((p) => p.type === "text" && p.text && p.text.length > 0)
+            );
+
+            if (hasAssistantResponse) {
+              task.status = "completed";
+              task.completedAt = new Date().toISOString();
+              notifyParentSession(task);
+              continue;
+            }
+          } catch {
+            // Ignore fallback check errors
+          }
+        }
         await updateTaskProgress(task);
         continue;
       }

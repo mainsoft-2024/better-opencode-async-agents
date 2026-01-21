@@ -151,11 +151,21 @@ export async function getTaskMessages(
  * Check and update task status.
  *
  * If the task's session is idle, marks the task as completed and notifies the parent session.
+ * Uses a fallback mechanism: if session status isn't in the response, checks for assistant
+ * messages to detect completion (session might have finished and no longer appear in status).
+ *
+ * @param skipNotification - If true, skip sending notification to parent session.
+ *   Use this when the parent is blocked waiting for a tool result (e.g., background_output with block=true).
+ * @param getTaskMessages - Function to get messages from a session (for fallback detection).
  */
 export async function checkAndUpdateTaskStatus(
   task: BackgroundTask,
   client: OpencodeClient,
-  notifyParentSession: (task: BackgroundTask) => void
+  notifyParentSession: (task: BackgroundTask) => void,
+  skipNotification = false,
+  getTaskMessages?: (
+    sessionID: string
+  ) => Promise<Array<{ info?: { role?: string }; parts?: Array<{ type?: string; text?: string }> }>>
 ): Promise<BackgroundTask> {
   if (task.status !== "running") {
     return task;
@@ -169,7 +179,33 @@ export async function checkAndUpdateTaskStatus(
     if (sessionStatus?.type === "idle") {
       task.status = "completed";
       task.completedAt = new Date().toISOString();
-      notifyParentSession(task);
+      if (!skipNotification) {
+        notifyParentSession(task);
+      }
+      return task;
+    }
+
+    // Fallback: if session isn't in the status response, it may have completed.
+    // Check if there are assistant messages (indicating the agent responded and finished).
+    if (!sessionStatus && getTaskMessages) {
+      try {
+        const messages = await getTaskMessages(task.sessionID);
+        const hasAssistantResponse = messages.some(
+          (m) =>
+            m.info?.role === "assistant" &&
+            m.parts?.some((p) => p.type === "text" && p.text && p.text.length > 0)
+        );
+
+        if (hasAssistantResponse) {
+          task.status = "completed";
+          task.completedAt = new Date().toISOString();
+          if (!skipNotification) {
+            notifyParentSession(task);
+          }
+        }
+      } catch {
+        // Ignore fallback check errors
+      }
     }
   } catch {
     // Ignore status check errors

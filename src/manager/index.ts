@@ -82,8 +82,17 @@ export class BackgroundManager {
     return getTaskMessages(sessionID, this.client);
   }
 
-  async checkAndUpdateTaskStatus(task: BackgroundTask): Promise<BackgroundTask> {
-    return checkAndUpdateTaskStatus(task, this.client, (t) => this.notifyParentSession(t));
+  async checkAndUpdateTaskStatus(
+    task: BackgroundTask,
+    skipNotification = false
+  ): Promise<BackgroundTask> {
+    return checkAndUpdateTaskStatus(
+      task,
+      this.client,
+      (t) => this.notifyParentSession(t),
+      skipNotification,
+      (sessionID) => this.getTaskMessages(sessionID)
+    );
   }
 
   async checkSessionExists(sessionID: string): Promise<boolean> {
@@ -95,6 +104,12 @@ export class BackgroundManager {
     message: string,
     timeoutMs: number
   ): Promise<string> {
+    // Get initial message count to detect new responses
+    const initialMessages = await this.getTaskMessages(task.sessionID);
+    const initialAssistantCount = initialMessages.filter(
+      (m) => m.info?.role === "assistant"
+    ).length;
+
     await this.client.session.promptAsync({
       path: { id: task.sessionID },
       body: {
@@ -113,10 +128,15 @@ export class BackgroundManager {
       const allStatuses = (statusResult.data ?? {}) as Record<string, { type: string }>;
       const sessionStatus = allStatuses[task.sessionID];
 
-      if (sessionStatus?.type === "idle") {
+      // Check if session is idle OR if session isn't in status (fallback)
+      const shouldCheckMessages = sessionStatus?.type === "idle" || !sessionStatus;
+
+      if (shouldCheckMessages) {
         const messages = await this.getTaskMessages(task.sessionID);
         const assistantMessages = messages.filter((m) => m.info?.role === "assistant");
-        if (assistantMessages.length > 0) {
+
+        // Check if we have a new assistant response
+        if (assistantMessages.length > initialAssistantCount) {
           const lastMessage = assistantMessages[assistantMessages.length - 1];
           const textParts = lastMessage?.parts?.filter((p) => p.type === "text") ?? [];
           const textContent = textParts
@@ -125,7 +145,11 @@ export class BackgroundManager {
             .join("\n");
           return `✓ **Resume Response** (count: ${task.resumeCount})\n\n${textContent || "(No text response)"}`;
         }
-        return `✓ **Resume Response** (count: ${task.resumeCount})\n\n(No response found)`;
+
+        // If session is explicitly idle but no new messages, return
+        if (sessionStatus?.type === "idle") {
+          return `✓ **Resume Response** (count: ${task.resumeCount})\n\n(No response found)`;
+        }
       }
     }
 
@@ -137,6 +161,12 @@ export class BackgroundManager {
     message: string,
     toolContext: { sessionID: string; messageID: string; agent: string }
   ): Promise<void> {
+    // Get initial message count to detect new responses
+    const initialMessages = await this.getTaskMessages(task.sessionID);
+    const initialAssistantCount = initialMessages.filter(
+      (m) => m.info?.role === "assistant"
+    ).length;
+
     this.client.session
       .promptAsync({
         path: { id: task.sessionID },
@@ -159,16 +189,39 @@ export class BackgroundManager {
             const allStatuses = (statusResult.data ?? {}) as Record<string, { type: string }>;
             const sessionStatus = allStatuses[task.sessionID];
 
-            if (sessionStatus?.type === "idle") {
-              task.status = "completed";
-              await notifyResumeComplete(
-                task,
-                this.client,
-                this.directory,
-                toolContext,
-                (sessionID) => this.getTaskMessages(sessionID)
-              );
-              return;
+            // Check if session is idle OR if session isn't in status (fallback)
+            const shouldCheckMessages = sessionStatus?.type === "idle" || !sessionStatus;
+
+            if (shouldCheckMessages) {
+              const messages = await this.getTaskMessages(task.sessionID);
+              const assistantMessages = messages.filter((m) => m.info?.role === "assistant");
+
+              // Check if we have a new assistant response
+              if (assistantMessages.length > initialAssistantCount) {
+                task.status = "completed";
+                await notifyResumeComplete(
+                  task,
+                  this.client,
+                  this.directory,
+                  toolContext,
+                  (sessionID) => this.getTaskMessages(sessionID)
+                );
+                return;
+              }
+
+              // If session is explicitly idle but no new messages, keep waiting (might still be processing)
+              if (sessionStatus?.type === "idle" && attempts > 5) {
+                // After 5 attempts with idle status and no new messages, consider it done
+                task.status = "completed";
+                await notifyResumeComplete(
+                  task,
+                  this.client,
+                  this.directory,
+                  toolContext,
+                  (sessionID) => this.getTaskMessages(sessionID)
+                );
+                return;
+              }
             }
           } catch {
             // Ignore status check errors
@@ -226,7 +279,8 @@ export class BackgroundManager {
       () => this.clearAllTasks(),
       () => this.stopPolling(),
       (tasks) => this.showProgressToast(tasks),
-      () => this.getAllTasks()
+      () => this.getAllTasks(),
+      (sessionID) => this.getTaskMessages(sessionID)
     );
   }
 

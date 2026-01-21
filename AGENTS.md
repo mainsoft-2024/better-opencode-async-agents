@@ -37,3 +37,14 @@ These documents should be referenced frequently when:
 All documentation files are sourced from: `https://github.com/anomalyco/opencode/tree/dev/packages/web/src/content/docs`
 
 * Using ToDo tool is ESSENTIAL!!!
+
+## Development Constraints
+
+### Plugin Hot-Reload Limitation
+**IMPORTANT**: After making changes to the plugin code and running `npm run build`, OpenCode must be **restarted** for the plugin changes to take effect. The plugin is loaded at OpenCode startup and does not support hot-reload.
+
+Steps to test plugin changes:
+1. Make code changes
+2. Run `npm run build`
+3. **Restart OpenCode** (the host application)
+4. Test the updated functionality

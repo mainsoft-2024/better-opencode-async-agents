@@ -9,7 +9,10 @@ import type { BackgroundTask } from "../types";
  */
 export function createBackgroundOutput(manager: {
   getTask(taskId: string): BackgroundTask | undefined;
-  checkAndUpdateTaskStatus(task: BackgroundTask): Promise<BackgroundTask>;
+  checkAndUpdateTaskStatus(
+    task: BackgroundTask,
+    skipNotification?: boolean
+  ): Promise<BackgroundTask>;
   getTaskMessages(sessionID: string): Promise<any[]>;
 }): ToolDefinition {
   return tool({
@@ -35,7 +38,8 @@ Returns:
           return `Task not found: ${args.task_id}`;
         }
 
-        task = await manager.checkAndUpdateTaskStatus(task);
+        // Don't skip notification on initial check (parent isn't blocking yet)
+        task = await manager.checkAndUpdateTaskStatus(task, false);
 
         const shouldBlock = args.block === true;
         const timeoutMs = Math.min(args.timeout ?? 60000, 600000);
@@ -71,7 +75,8 @@ Returns:
             return `Task was deleted: ${args.task_id}`;
           }
 
-          currentTask = await manager.checkAndUpdateTaskStatus(currentTask);
+          // Skip notification when blocking - parent session can't receive prompts while waiting for tool result
+          currentTask = await manager.checkAndUpdateTaskStatus(currentTask, true);
 
           if (currentTask.status === "completed") {
             if (!currentTask.resultRetrievedAt) {
