@@ -1,6 +1,6 @@
 {
   "name": "@paulp-o/opencode-background-agent",
-  "version": "0.1.3",
+  "version": "0.2.0",
   "description": "Background task management plugin for OpenCode AI",
   "type": "module",
   "main": "./dist/index.js",
