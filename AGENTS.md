@@ -21,7 +21,7 @@ Keep this managed block so 'openspec update' can refresh the instructions.
 
 The following documentation files from `@docs/` are particularly important for understanding and working with this project:
 
-### Core Development Documents
+### Core Development Documents (MUST READ if you need to develop plugins!)
 - **`sdk.mdx`** - Software Development Kit documentation, essential for understanding the development framework and APIs
 - **`server.mdx`** - Server architecture and configuration, critical for backend development and deployment
 - **`tools.mdx`** - Available tools and utilities, important for development workflow and automation

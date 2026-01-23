@@ -53,7 +53,7 @@ export class BackgroundManager {
       // Note: We don't load into memory on startup to keep memory lean.
       // Tasks are loaded lazily via getTask() when needed.
       // This just validates the file is readable.
-      console.log(`[manager] Loaded ${Object.keys(persisted).length} persisted tasks from disk`);
+      console.log(`[opencode-background-task MANAGER] Loaded ${Object.keys(persisted).length} persisted tasks from disk`);
     } catch {
       // Ignore load errors - file may not exist yet
     }
@@ -99,7 +99,7 @@ export class BackgroundManager {
       await saveTask(task.sessionID, persisted);
     } catch {
       // Log but don't fail - persistence is best-effort
-      console.warn(`[manager] Failed to persist task ${task.sessionID}`);
+      console.warn(`[opencode-background-task MANAGER] Failed to persist task ${task.sessionID}`);
     }
   }
 

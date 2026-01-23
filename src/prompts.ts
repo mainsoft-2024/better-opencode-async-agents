@@ -198,7 +198,11 @@ export const TOAST_TITLES = {
   taskCompleted: "✓ Task completed",
   taskFailed: "✗ Task failed",
   taskCancelled: "⊘ Task cancelled",
-  backgroundTasksRunning: (spinner: string) => `${spinner} Background Tasks`,
+  backgroundTasksRunning: (spinner: string) => {
+    const prefix = process.env.OPENCODE_BGAGENT_PREFIX;
+    const baseText = "Background Agents";
+    return prefix ? `${spinner} ${prefix} ${baseText}` : `${spinner} ${baseText}`;
+  },
   tasksComplete: "✓ Tasks complete",
 };
 
