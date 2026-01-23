@@ -1,195 +1,129 @@
-# OpenCode Background Agent
+# OpenCode Background Agent 🚀
 
 [![npm version](https://img.shields.io/npm/v/@paulp-o/opencode-background-agent)](https://www.npmjs.com/package/@paulp-o/opencode-background-agent)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-**Async background tasks for OpenCode. Run multiple AI agents in parallel—just like Claude Code, but for OpenCode.**
+**Background tasks for OpenCode—with a memory.**
 
-[What is this?](#what-does-it-do) • [Quick Start](#-quick-start) • [Features](#-features) • [Tools](#-tools-provided)
+Claude Code brought subagents to the terminal, but they have one major flaw: **they start with a blank slate.** Every time you delegate a task, you're forced to re-explain the context, the bugs, and the plan.
+
+This plugin fixes that. It brings **Fork Context Inheritance** to OpenCode. Your child agents inherit your full conversation history. No more amnesiac subagents.
+
+[Why this exists](#-the-problem-amnesiac-subagents) • [Quick Start](#-quick-start) • [vs Claude Code](#-how-we-beat-claude-code) • [Tools](#-tools)
 
 ---
 
-## What does it do?
+## 🧠 The Problem: Amnesiac Subagents
 
-OpenCode Background Agent lets you spawn multiple AI agents that work **in parallel** while you continue your main conversation. Fire off a research task, a code review, and a documentation update—all running simultaneously in the background.
+In standard subagent implementations (like Claude Code), spawning a task looks like this:
 
-When tasks complete, you get notified. Check results when you're ready. No blocking, no waiting.
+```typescript
+// Child agent starts with zero context
+background_task({
+  prompt: "Fix that bug in the parser", // parser? what bug? 🤷
+  agent: "coder"
+})
+```
 
-## Background
+With **OpenCode Background Agent**, your subagents are born with your context:
 
-Modern AI coding workflows aren't sequential anymore. You're not waiting for one thing to finish before starting another—you're orchestrating multiple agents, each handling different parts of your codebase.
+```typescript
+// Child agent inherits everything you've discussed
+background_task({
+  prompt: "Fix that bug in the parser", // I know exactly what bug you mean! ✓
+  agent: "coder",
+  fork: true
+})
+```
 
-The problem? Most AI coding tools force you into a single-threaded conversation. One question, one answer, repeat.
-
-This plugin brings **true parallel execution** to OpenCode:
-
-- Spawn background agents for long-running tasks
-- Continue your main conversation while they work  
-- Get notified when tasks complete
-- Retrieve results when you need them
-
-Think of it as `&` for your AI workflow—run things in the background and come back to them later.
+### Why it's a game-changer:
+- **Zero Re-explanation**: Your agents already know the codebase state and your intent.
+- **Deep Delegation**: "Investigate why this test is failing" works because the agent knows the test's history.
+- **True Parallelism**: Spin up 5 agents to look at 5 different parts of a complex discussion simultaneously.
 
 ---
 
 ## 🚀 Quick Start
 
-Add to your `opencode.json`:
+1. **Install**
+   Add it to your OpenCode configuration:
+   ```json
+   {
+     "plugins": ["@paulp-o/opencode-background-agent"]
+   }
+   ```
 
-```json
-{
-  "plugin": ["@paulp-o/opencode-background-agent"]
-}
+2. **Delegate**
+   Tell your agent to work in the background:
+   ```
+   "Analyze the performance bottlenecks in the background while I refactor the UI"
+   ```
+
+3. **Check In**
+   ```bash
+background_list()  # See what's running (automatically filtered to current session)
+background_output({ task_id: "ses_a1b2" }) # Grab results when ready (short IDs work!)
 ```
 
-That's it. You now have 5 new tools available.
-
-### Basic Usage
+Or use the tools directly:
 
 ```typescript
-// Fire off a background task
-background_task(
-  description: "Research authentication patterns",
-  prompt: "Analyze the auth implementation in src/auth/",
-  agent: "researcher"
-)
-// Returns immediately with task ID: ses_a1b2c3d4
-
-// Continue working on other things...
-
-// Check results when ready
-background_output(task_id: "ses_a1b2")  // Short IDs work!
+background_task({ description: "Research payments", prompt: "...", agent: "researcher" })
+background_task({ description: "Review auth", prompt: "...", agent: "reviewer", fork: true })
 ```
 
 ---
 
-## ✨ Features
+## ⚔️ How We Beat Claude Code
 
-### 🔄 True Parallel Execution
-
-Run 2, 5, 10 agents simultaneously. Each gets its own session, works independently, and reports back when done. Your main conversation never blocks.
-
-### 🍴 Fork Context Inheritance
-
-Pass your current conversation context to child agents with `fork: true`. They start with full awareness of what you've been discussing—no need to re-explain everything.
-
-```typescript
-background_task(
-  prompt: "Continue investigating the memory leak",
-  agent: "debugger",
-  fork: true  // Child inherits parent conversation
-)
-```
-
-### 💾 Persistent Tasks
-
-Tasks survive plugin restarts. Come back hours later and your completed tasks are still there, ready for result retrieval. Task metadata persists at `~/.opencode/plugins/background-agent/tasks.json`.
-
-### 🔔 Real-time Notifications
-
-- **Toast notifications** when tasks complete, fail, or get cancelled
-- **Progress tracking** with tool call counts
-- **Spinner animations** for running tasks
-
-### 🔑 GitHub-style Short IDs
-
-No more copying 30-character IDs. Task IDs display in short format (`ses_a1b2c3d4`) and you can reference them with any unique prefix:
-
-```typescript
-background_output(task_id: "ses_a1b2")  // Works if unique
-background_output(task_id: "ses_a1b2c3d4e5f6...")  // Full ID also works
-```
-
-### 🔁 Multi-turn Conversations
-
-Resume completed tasks with follow-up prompts. The agent picks up right where it left off with full conversation history.
-
-```typescript
-// Initial task completes
-background_task(resume: "ses_a1b2", prompt: "Now implement option B")
-```
+| Feature | Claude Code Subagents | **OpenCode Background Agent** |
+|---------|:-----------:|:----------------------------:|
+| Background Execution | ✅ | ✅ |
+| Custom Agent Selection | ✅ | ✅ |
+| **Fork Context Inheritance** | ❌ (Fresh start) | **✅ Inherit everything** |
+| **Persistence** | ❌ (Session only) | **✅ Survives restarts** |
+| **UX** | Standard | **✅ Short IDs + Toast notifications** |
+| **Session Isolation** | ✅ | **✅ No token pollution** |
 
 ---
 
-## 🤔 Why This vs. Manual Sequential Prompts?
-
-| Without Background Agent | With Background Agent |
-|-------------------------|----------------------|
-| "Research X" → wait → "Now do Y" → wait → "Finally Z" | Fire all three, continue working, collect results |
-| Context lost between prompts | Fork preserves full conversation context |
-| One task at a time | True parallel execution |
-| Blocking workflow | Non-blocking, async-first |
-
----
-
-## 🛠 Tools Provided
+## 🛠 Tools
 
 ### `background_task`
-Launch a new background agent or resume an existing one.
+The heavy lifter. Use it to spawn, fork, or resume.
 
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `description` | string | Short description (shown in status) |
-| `prompt` | string | Full prompt for the agent |
-| `agent` | string | Agent type to use |
-| `fork` | boolean | Inherit parent conversation context |
-| `resume` | string | Task ID to resume (mutually exclusive with fork) |
+```typescript
+background_task({
+  description: "Fixing memory leak",
+  prompt: "Analyze the leak we found in the profiler",
+  agent: "coder",
+  fork: true // The magic switch
+})
+```
 
 ### `background_output`
-Retrieve task results.
+Fetch results. Supports prefix matching (e.g., `ses_a1` instead of `ses_a1b2c3d4`).
 
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `task_id` | string | Task ID (short or full) |
-| `block` | boolean | Wait for completion (default: false) |
-| `timeout` | number | Timeout in seconds when blocking (default: 120) |
+```typescript
+background_output({
+  task_id: "ses_a1b2",
+  block: true // Wait for it to finish
+})
+```
 
 ### `background_list`
-List all tasks from current session.
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `status` | string | Filter: "running", "completed", "error", "cancelled" |
-
-### `background_cancel`
-Cancel a running task.
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `task_id` | string | Task ID to cancel |
-
-### `background_clear`
-Clear all tasks from memory (doesn't delete persisted metadata).
+See what your agents are doing. Automatically filtered to your current session to keep your workspace clean.
 
 ---
 
-## 🚀 Roadmap
+## 💾 Persistence & Performance
 
-- [ ] Batch task launching (fire N tasks with one call)
-- [ ] Task dependencies (run B after A completes)
-- [ ] Priority queuing
-- [ ] Resource limits (max concurrent tasks)
-- [ ] Task templates
-
----
-
-## Development
-
-```bash
-bun install        # Install dependencies
-bun run build:all  # Build the project
-bun test           # Run tests
-bun run typecheck  # Type check
-```
+- **Zero Data Loss**: Tasks are saved to disk (`~/.opencode/plugins/background-agent/tasks.json`). If OpenCode crashes, your work is still there.
+- **Smart Truncation**: We handle context windows intelligently, truncating large tool results to keep your child agents fast and focused.
+- **Isolated Sessions**: Background agents run in their own sessions. They won't pollute your main conversation with their tool logs.
 
 ---
 
 ## 📄 License
 
-MIT License - see [LICENSE](LICENSE) file for details.
-
----
-
-## Support
-
-Issues, questions, or contributions → [GitHub repository](https://github.com/paulp-o/opencode-background-agent)
+MIT
