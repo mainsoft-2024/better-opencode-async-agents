@@ -29,7 +29,7 @@ Arguments:
 IMPORTANT: You'll be informed when each task is complete. DO NOT assume all tasks were done, check again if all agents you need are complete.
 
 Returns immediately with task ID. The task will run in background and notify you when complete.
-Optionally use \`background_output\` later if you need to check results manually with or without blocking.`,
+Optionally use \`superagents_output\` later if you need to check results manually with or without blocking.`,
 
   backgroundList: `List all background tasks.
 
@@ -107,13 +107,13 @@ export const ERROR_MESSAGES = {
   // Task validation errors
   taskNotFound: (taskId: string) => `Task not found: ${taskId}`,
   taskNotFoundWithHint: (taskId: string) =>
-    `Task not found: ${taskId}. Use background_list to see available tasks.`,
+    `Task not found: ${taskId}. Use superagents_list to see available tasks.`,
 
   // Resume validation errors
   taskCurrentlyResuming: "Task is currently being resumed. Wait for completion.",
   onlyCompletedCanResume: (currentStatus: string) =>
     `Only completed tasks can be resumed. Current status: ${currentStatus}`,
-  sessionExpired: "Session expired or was deleted. Start a new background_task to continue.",
+  sessionExpired: "Session expired or was deleted. Start a new superagents_task to continue.",
 
   // Launch validation errors
   agentRequired: "Agent parameter is required. Specify which agent to use.",
@@ -177,7 +177,7 @@ export const NOTIFICATION_MESSAGES = {
   ) => `${header}
 Task "${description}" finished in ${duration}.
 Batch progress: ${completedCount}/${totalCount} tasks complete, ${runningCount} still running.
-If you need results immediately, use background_output(task_id="${shortTaskId}").
+If you need results immediately, use superagents_output(task_id="${shortTaskId}").
 Otherwise, continue working or just say 'waiting' and halt.${leftoverWarning ? ` ${leftoverWarning}` : ""}`,
 
   leftoverTasksWarning:
@@ -191,7 +191,7 @@ Otherwise, continue working or just say 'waiting' and halt.${leftoverWarning ? `
 
   resumeCompletionBody: (header: string, description: string, shortTaskId: string) =>
     `${header}
-Task "${description}" finished. Use background_output(task_id="${shortTaskId}") for full response.`,
+Task "${description}" finished. Use superagents_output(task_id="${shortTaskId}") for full response.`,
 
   resumeErrorBody: (
     header: string,
@@ -201,7 +201,7 @@ Task "${description}" finished. Use background_output(task_id="${shortTaskId}") 
   ) =>
     `${header}
 Task "${description}" failed: ${errorMessage}
-Use background_output(task_id="${shortTaskId}") for more details.`,
+Use superagents_output(task_id="${shortTaskId}") for more details.`,
 };
 
 // =============================================================================
@@ -214,7 +214,7 @@ export const TOAST_TITLES = {
   taskCancelled: "⊘ Task cancelled",
   backgroundTasksRunning: (spinner: string) => {
     const prefix = process.env.OPENCODE_BGAGENT_PREFIX;
-    const baseText = "Background Agents";
+    const baseText = "Superagents";
     return prefix ? `⛭ ${prefix} ${baseText}` : `⛭ ${baseText}`;
   },
   tasksComplete: "✓ Tasks complete",

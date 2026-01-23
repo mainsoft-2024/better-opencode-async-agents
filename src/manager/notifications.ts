@@ -51,8 +51,6 @@ export function showProgressToast(
   const totalToolCalls = batchTasks.reduce((sum, t) => sum + (t.progress?.toolCalls ?? 0), 0);
 
   const taskLines: string[] = [];
-  // Use local shortId for toast (last 8 chars) - different from helpers.shortId which preserves ses_ prefix
-  const toastShortId = (id: string) => id.slice(-8);
 
   const batchRunning = runningTasks.filter((t) => t.batchId === activeBatchId);
   for (const task of batchRunning) {
@@ -66,7 +64,7 @@ export function showProgressToast(
         prevTools.length > 0 ? ` - ${prevTools.join(" > ")} > ｢${lastTool}｣` : ` - ｢${lastTool}｣`;
     }
     taskLines.push(
-      `${spinner} [${toastShortId(task.sessionID)}] ${task.agent}: ${task.description} (${duration})${toolsStr}`
+      `${spinner} [${shortId(task.sessionID)}] ${task.agent}: ${task.description} (${duration})${toolsStr}`
     );
   }
 
@@ -88,7 +86,7 @@ export function showProgressToast(
     );
     const icon = task.status === "completed" ? "✓" : task.status === "error" ? "✗" : "⊘";
     taskLines.push(
-      `${icon} [${toastShortId(task.sessionID)}] ${task.agent}: ${task.description} (${duration})`
+      `${icon} [${shortId(task.sessionID)}] ${task.agent}: ${task.description} (${duration})`
     );
   }
 

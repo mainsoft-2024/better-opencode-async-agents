@@ -1,7 +1,7 @@
-# OpenCode Background Agent
+# OpenCode SuperAgents 
 
-[![npm version](https://img.shields.io/npm/v/@paulp-o/opencode-async-agents-turbo)](https://www.npmjs.com/package/@paulp-o/opencode-async-agents-turbo)
-[![license](https://img.shields.io/npm/l/@paulp-o/opencode-async-agents-turbo)](https://github.com/paulp-o/opencode-async-agents-turbo/blob/main/LICENSE)
+[![npm version](https://img.shields.io/npm/v/@paulp-o/opencode-superagents)](https://www.npmjs.com/package/@paulp-o/opencode-superagents)
+[![license](https://img.shields.io/npm/l/@paulp-o/opencode-superagents)](https://github.com/paulp-o/opencode-superagents/blob/main/LICENSE)
 
 An unopinionated, **Non-Blocking(optional), Async** Background agent plugin for OpenCode, **same as (or better than) that of Claude Code!**
 
@@ -11,7 +11,7 @@ Add the plugin to your `opencode.json(c)`:
 
 ```json
 {
-  "plugin": ["@paulp-o/opencode-background-agent"]
+  "plugin": ["@paulp-o/opencode-superagents"]
 }
 ```
 
@@ -27,12 +27,12 @@ Add the plugin to your `opencode.json(c)`:
 
 ## Tools Provided
 
-- **`background_task(description: string, prompt: string, agent: string)`**: Launch async background agent tasks
-- **`background_output(task_id: string, block: boolean, timeout?: number)`**: Get task results (blocking/non-blocking)
-- **`background_cancel(task_id: string)`**: Cancel running tasks
-- **`background_resume(task_id: string, message: string, block?: boolean, timeout?: number)`**: Resume a completed task with a follow-up message for multi-turn conversations
-- **`background_list(status?: "running" | "completed" | "error" | "cancelled")`**: List all tasks with status filter
-- **`background_clear()`**: Abort and clear all tasks
+- **`superagents_task(description: string, prompt: string, agent: string)`**: Launch async background agent tasks
+- **`superagents_output(task_id: string, block: boolean, timeout?: number)`**: Get task results (blocking/non-blocking)
+- **`superagents_cancel(task_id: string)`**: Cancel running tasks
+- **`superagents_resume(task_id: string, message: string, block?: boolean, timeout?: number)`**: Resume a completed task with a follow-up message for multi-turn conversations
+- **`superagents_list(status?: "running" | "completed" | "error" | "cancelled")`**: List all tasks with status filter
+- **`superagents_clear()`**: Abort and clear all tasks
 
 ## Development
 
@@ -64,4 +64,4 @@ MIT
 
 ## Support
 
-For issues, questions, or contributions, please visit the [GitHub repository](https://github.com/paulp-o/opencode-async-agents-turbo).
+For issues, questions, or contributions, please visit the [GitHub repository](https://github.com/paulp-o/opencode-superagents).

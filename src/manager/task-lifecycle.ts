@@ -132,11 +132,11 @@ export async function launchTask(
       body: {
         agent: input.agent,
         tools: {
-          background_task: false,
-          background_output: false,
-          background_cancel: false,
-          background_list: false,
-          background_clear: false,
+          superagents_task: false,
+          superagents_output: false,
+          superagents_cancel: false,
+          superagents_list: false,
+          superagents_clear: false,
         },
         parts: [{ type: "text", text: input.prompt }],
       },

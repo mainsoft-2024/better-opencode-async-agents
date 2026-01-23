@@ -1,5 +1,5 @@
 {
-  "name": "@paulp-o/opencode-async-agents-turbo",
+  "name": "@paulp-o/opencode-superagents",
   "version": "0.3.0",
   "description": "Background task management plugin for OpenCode AI",
   "type": "module",
@@ -29,12 +29,12 @@
   "author": "paulpark",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/paulp-o/opencode-async-agents-turbo.git"
+    "url": "git+https://github.com/paulp-o/opencode-superagents.git"
   },
   "bugs": {
-    "url": "https://github.com/paulp-o/opencode-async-agents-turbo/issues"
+    "url": "https://github.com/paulp-o/opencode-superagents/issues"
   },
-  "homepage": "https://github.com/paulp-o/opencode-async-agents-turbo#readme",
+  "homepage": "https://github.com/paulp-o/opencode-superagents#readme",
   "peerDependencies": {
     "@opencode-ai/plugin": "^1.0.0"
   },

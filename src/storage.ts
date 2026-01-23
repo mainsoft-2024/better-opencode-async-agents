@@ -31,7 +31,7 @@ function hasBun(): boolean {
 
 /**
  * Ensures the storage directory exists.
- * Creates ~/.opencode/plugins/background-agent/ if it doesn't exist.
+ * Creates ~/.opencode/plugins/opencode-superagents/ if it doesn't exist.
  */
 export async function ensureStorageDir(): Promise<void> {
   try {

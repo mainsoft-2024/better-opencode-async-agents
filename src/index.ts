@@ -24,11 +24,11 @@ export default async function plugin(ctx: PluginInput): Promise<Hooks> {
 
   return {
     tool: {
-      background_task: createBackgroundTask(manager),
-      background_output: createBackgroundOutput(manager),
-      background_cancel: createBackgroundCancel(manager),
-      background_list: createBackgroundList(manager),
-      background_clear: createBackgroundClear(manager),
+      superagents_task: createBackgroundTask(manager),
+      superagents_output: createBackgroundOutput(manager),
+      superagents_cancel: createBackgroundCancel(manager),
+      superagents_list: createBackgroundList(manager),
+      superagents_clear: createBackgroundClear(manager),
     },
     event: async () => {
       // Event handling is started in the manager constructor

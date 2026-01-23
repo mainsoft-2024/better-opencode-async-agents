@@ -41,11 +41,11 @@ describe("Background Agent Plugin", () => {
     const result = await plugin(mockContext as any);
 
     // Core tools that exist in current implementation
-    expect(result.tool).toHaveProperty("background_task");
-    expect(result.tool).toHaveProperty("background_output");
-    expect(result.tool).toHaveProperty("background_cancel");
-    expect(result.tool).toHaveProperty("background_list");
-    expect(result.tool).toHaveProperty("background_clear");
+    expect(result.tool).toHaveProperty("superagents_task");
+    expect(result.tool).toHaveProperty("superagents_output");
+    expect(result.tool).toHaveProperty("superagents_cancel");
+    expect(result.tool).toHaveProperty("superagents_list");
+    expect(result.tool).toHaveProperty("superagents_clear");
   });
 
   test("should return an object with event property", async () => {
@@ -57,11 +57,11 @@ describe("Background Agent Plugin", () => {
   });
 });
 
-describe("background_task tool", () => {
+describe("superagents_task tool", () => {
   test("should return error when agent is missing", async () => {
     const mockContext = createMockContext();
     const result = await plugin(mockContext as any);
-    const taskTool = result.tool!.background_task;
+    const taskTool = result.tool!.superagents_task;
 
     const output = await taskTool.execute({ description: "test", prompt: "test", agent: "" }, {
       sessionID: "parent",
@@ -75,7 +75,7 @@ describe("background_task tool", () => {
   test("should launch task with valid parameters", async () => {
     const mockContext = createMockContext();
     const result = await plugin(mockContext as any);
-    const taskTool = result.tool!.background_task;
+    const taskTool = result.tool!.superagents_task;
 
     const output = await taskTool.execute(
       { description: "test task", prompt: "do something", agent: "explore" },
@@ -90,7 +90,7 @@ describe("background_task tool", () => {
   test("should support resume mode via resume parameter", async () => {
     const mockContext = createMockContext();
     const result = await plugin(mockContext as any);
-    const taskTool = result.tool!.background_task;
+    const taskTool = result.tool!.superagents_task;
 
     // Try to resume a non-existent task
     const output = await taskTool.execute(
@@ -102,11 +102,11 @@ describe("background_task tool", () => {
   });
 });
 
-describe("background_output tool", () => {
+describe("superagents_output tool", () => {
   test("should return error when task not found", async () => {
     const mockContext = createMockContext();
     const result = await plugin(mockContext as any);
-    const outputTool = result.tool!.background_output;
+    const outputTool = result.tool!.superagents_output;
 
     const output = await outputTool.execute({ task_id: "ses_nonexistent" }, {} as any);
 
@@ -114,11 +114,11 @@ describe("background_output tool", () => {
   });
 });
 
-describe("background_list tool", () => {
+describe("superagents_list tool", () => {
   test("should return empty message when no tasks", async () => {
     const mockContext = createMockContext();
     const result = await plugin(mockContext as any);
-    const listTool = result.tool!.background_list;
+    const listTool = result.tool!.superagents_list;
 
     const output = await listTool.execute({}, {} as any);
 
@@ -126,11 +126,11 @@ describe("background_list tool", () => {
   });
 });
 
-describe("background_clear tool", () => {
+describe("superagents_clear tool", () => {
   test("should return message when no tasks to clear", async () => {
     const mockContext = createMockContext();
     const result = await plugin(mockContext as any);
-    const clearTool = result.tool!.background_clear;
+    const clearTool = result.tool!.superagents_clear;
 
     const output = await clearTool.execute({}, {} as any);
 

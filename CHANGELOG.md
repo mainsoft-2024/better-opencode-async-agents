@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 This project adheres to [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Breaking Changes
+- **BREAKING** Renamed all tools from `background_*` to `superagents_*`:
+  - `background_task` → `superagents_task`
+  - `background_output` → `superagents_output`
+  - `background_cancel` → `superagents_cancel`
+  - `background_list` → `superagents_list`
+  - `background_clear` → `superagents_clear`
+
 ## [0.3.0] - 2026-01-23
 
 ### Breaking Changes
@@ -14,7 +24,7 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 - **Removed preview section from resume notifications**: Resume completion notifications no longer include a response preview.
 
 ### Added
-- **Persistent Task Metadata**: Task metadata is now persisted to disk at `~/.opencode/plugins/background-agent/tasks.json`.
+- **Persistent Task Metadata**: Task metadata is now persisted to disk at `~/.opencode/plugins/opencode-superagents/tasks.json`.
 - **Durable Tasks**: Tasks now survive plugin restarts and can be resumed indefinitely as long as the session exists in OpenCode.
 - **GitHub-style short IDs**: Task IDs now display in short format (e.g., `ses_41e08091` instead of full `ses_41e080918ffeyhQtX6E4vERe4O`). All tools accept both short and full IDs.
 - **Prefix matching for task IDs**: You can now use any unique prefix to reference a task (e.g., `ses_41e0` if it uniquely identifies a task).

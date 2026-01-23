@@ -86,7 +86,7 @@ setupNpmAuth();
 updateVersion(pkgPath);
 
 console.log(`\n🚀 Ready to release version ${version}?`);
-console.log(`📦 Package: @paulp-o/opencode-async-agents-turbo@${version}`);
+console.log(`📦 Package: @paulp-o/opencode-superagents@${version}`);
 console.log("\n⚠️  This will:");
 console.log("   - Update package version");
 console.log("   - Run typecheck and tests");
@@ -119,7 +119,7 @@ run("git push origin HEAD --tags");
 run(`gh release create v${version} --title "Release v${version}" --generate-notes`);
 
 console.log(`\n✅ Release v${version} complete!`);
-console.log("📦 npm: https://www.npmjs.com/package/@paulp-o/opencode-async-agents-turbo");
+console.log("📦 npm: https://www.npmjs.com/package/@paulp-o/opencode-superagents");
 console.log(
-  `🐙 GitHub: https://github.com/paulp-o/opencode-async-agents-turbo/releases/tag/v${version}`
+  `🐙 GitHub: https://github.com/paulp-o/opencode-superagents/releases/tag/v${version}`
 );

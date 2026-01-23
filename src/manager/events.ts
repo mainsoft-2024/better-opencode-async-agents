@@ -56,7 +56,7 @@ export function handleEvent(
   const props = event.properties;
 
   // Debug: log all events to understand what's being received
-  // console.log("[background-agent] Event received:", event.type, JSON.stringify(props));
+  // console.log("[opencode-superagents] Event received:", event.type, JSON.stringify(props));
 
   // Clear on session.new, session.switch, prompt.clear, or session.interrupt (ESC key)
   if (event.type === "tui.command.execute") {
