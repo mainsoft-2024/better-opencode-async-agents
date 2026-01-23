@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 
 This project adheres to [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [0.3.0] - 2026-01-23
 
 ### Breaking Changes
 - **Changed Task ID format**: Task IDs have changed from `bg_*` format to session ID format (`ses_*`).
