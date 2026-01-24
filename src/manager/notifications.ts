@@ -170,7 +170,6 @@ export function notifyParentSession(
       .catch(() => {});
   }
 
-  const leftoverWarning = runningTasks > 0 ? NOTIFICATION_MESSAGES.leftoverTasksWarning : "";
   const taskStatusHeader =
     task.status === "completed"
       ? NOTIFICATION_MESSAGES.taskCompleted
@@ -184,8 +183,7 @@ export function notifyParentSession(
     completedTasks,
     totalTasks,
     runningTasks,
-    shortId(task.sessionID),
-    leftoverWarning
+    shortId(task.sessionID)
   );
 
   setTimeout(async () => {

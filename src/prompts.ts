@@ -160,10 +160,10 @@ If you need complete file contents or detailed results, re-read the files direct
 // =============================================================================
 
 export const NOTIFICATION_MESSAGES = {
-  // Task completion notifications
-  taskCompleted: "✓ **Background task completed**",
-  taskFailed: "✗ **Background task failed**",
-  taskCancelled: "⊘ **Background task cancelled**",
+  // Task completion notifications (concise format per OpenSpec add-silent-system-hints)
+  taskCompleted: "**SuperAgents**",
+  taskFailed: "✗ **SuperAgents**",
+  taskCancelled: "⊘ **SuperAgents**",
 
   taskCompletionBody: (
     header: string,
@@ -173,12 +173,10 @@ export const NOTIFICATION_MESSAGES = {
     totalCount: number,
     runningCount: number,
     shortTaskId: string,
-    leftoverWarning: string
+    leftoverWarning?: string
   ) => `${header}
-Task "${description}" finished in ${duration}.
-Batch progress: ${completedCount}/${totalCount} tasks complete, ${runningCount} still running.
-If you need results immediately, use superagents_output(task_id="${shortTaskId}").
-Otherwise, continue working or just say 'waiting' and halt.${leftoverWarning ? ` ${leftoverWarning}` : ""}`,
+Agent "${description}" (ID ${shortTaskId}) finished in ${duration}.
+Batch: ${completedCount}/${totalCount} complete, ${runningCount} running.`,
 
   leftoverTasksWarning:
     "WATCH OUT for leftover tasks, you will likely WANT to wait for all tasks to complete.",
@@ -191,7 +189,7 @@ Otherwise, continue working or just say 'waiting' and halt.${leftoverWarning ? `
 
   resumeCompletionBody: (header: string, description: string, shortTaskId: string) =>
     `${header}
-Task "${description}" finished. Use superagents_output(task_id="${shortTaskId}") for full response.`,
+Task "${description}" (ID ${shortTaskId}) finished.`,
 
   resumeErrorBody: (
     header: string,
@@ -200,8 +198,28 @@ Task "${description}" finished. Use superagents_output(task_id="${shortTaskId}")
     shortTaskId: string
   ) =>
     `${header}
-Task "${description}" failed: ${errorMessage}
-Use superagents_output(task_id="${shortTaskId}") for more details.`,
+Task "${description}" (ID ${shortTaskId}) failed: ${errorMessage}`,
+};
+
+// =============================================================================
+// System Hint Messages (silent, for AI/LLM consumption only)
+// =============================================================================
+
+export const SYSTEM_HINT_MESSAGES = {
+  progressHeader: (completed: number, total: number) => `Agent Progress: ${completed}/${total}`,
+
+  completedSection: (taskIds: string[]) =>
+    `✓ Completed: superagents_output(task_id=${taskIds.join(", ")})`,
+
+  errorSection: (taskIds: string[]) => `✗ Error: superagents_output(task_id=${taskIds.join(", ")})`,
+
+  cancelledSection: (taskIds: string[]) =>
+    `⊘ Cancelled: superagents_output(task_id=${taskIds.join(", ")})`,
+
+  guidance: "You can continue working or just say 'waiting' and halt.",
+
+  leftoverWarning:
+    "WATCH OUT for leftovers, you will likely WANT to wait for all agents to complete.",
 };
 
 // =============================================================================

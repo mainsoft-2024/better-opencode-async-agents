@@ -1,4 +1,5 @@
 import type { Hooks, PluginInput } from "@opencode-ai/plugin";
+import { createChatMessageHook, createSystemTransformHook } from "./hooks/system-transform";
 import { BackgroundManager } from "./manager";
 import {
   createBackgroundCancel,
@@ -33,5 +34,9 @@ export default async function plugin(ctx: PluginInput): Promise<Hooks> {
     event: async () => {
       // Event handling is started in the manager constructor
     },
+    // Inject system hints into chat messages (documented, working)
+    "chat.message": createChatMessageHook(manager),
+    // Also try experimental system transform (may not be active yet)
+    "experimental.chat.system.transform": createSystemTransformHook(manager),
   };
 }
