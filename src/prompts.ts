@@ -160,49 +160,6 @@ If you need complete file contents or detailed results, re-read the files direct
 // =============================================================================
 
 export const NOTIFICATION_MESSAGES = {
-  // Task completion notifications
-  taskCompleted: "✓ **Background task completed**",
-  taskFailed: "✗ **Background task failed**",
-  taskCancelled: "⊘ **Background task cancelled**",
-
-  taskCompletionBody: (
-    header: string,
-    description: string,
-    duration: string,
-    completedCount: number,
-    totalCount: number,
-    runningCount: number,
-    shortTaskId: string,
-    leftoverWarning: string
-  ) => `${header}
-Task "${description}" finished in ${duration}.
-Batch progress: ${completedCount}/${totalCount} tasks complete, ${runningCount} still running.
-If you need results immediately, use superagents_output(task_id="${shortTaskId}").
-Otherwise, continue working or just say 'waiting' and halt.${leftoverWarning ? ` ${leftoverWarning}` : ""}`,
-
-  leftoverTasksWarning:
-    "WATCH OUT for leftover tasks, you will likely WANT to wait for all tasks to complete.",
-
-  // Resume notifications
-  resumeCompleted: "✓ **Resume completed**",
-  resumeCompletedWithCount: (count: number) => `✓ **Resume #${count} completed**`,
-  resumeFailed: "✗ **Resume failed**",
-  resumeFailedWithCount: (count: number) => `✗ **Resume #${count} failed**`,
-
-  resumeCompletionBody: (header: string, description: string, shortTaskId: string) =>
-    `${header}
-Task "${description}" finished. Use superagents_output(task_id="${shortTaskId}") for full response.`,
-
-  resumeErrorBody: (
-    header: string,
-    description: string,
-    errorMessage: string,
-    shortTaskId: string
-  ) =>
-    `${header}
-Task "${description}" failed: ${errorMessage}
-Use superagents_output(task_id="${shortTaskId}") for more details.`,
-
   // Visible notification messages
   visibleTaskCompleted: (description: string, duration: string) =>
     `✓ **Agent "${description}" finished in ${duration}.**`,

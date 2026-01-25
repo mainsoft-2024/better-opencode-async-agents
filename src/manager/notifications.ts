@@ -184,7 +184,7 @@ export function notifyParentSession(
         : NOTIFICATION_MESSAGES.visibleTaskCancelled(task.description, duration);
   const progressLine = NOTIFICATION_MESSAGES.taskProgressLine(completedTasks, totalTasks);
   const devIndicator =
-    process.env.NODE_ENV === "development" ? ` ${NOTIFICATION_MESSAGES.devHintIndicator}` : "";
+    process.env.SUPERAGENTS_DEBUG === "1" ? ` ${NOTIFICATION_MESSAGES.devHintIndicator}` : "";
   const visibleMessage = `${visibleStatus}\n${progressLine}${devIndicator}`;
 
   // Build hidden hint based on batch status
@@ -263,7 +263,7 @@ export async function notifyResumeComplete(
     const visibleStatus = NOTIFICATION_MESSAGES.visibleResumeCompleted(task.resumeCount, duration);
     const progressLine = NOTIFICATION_MESSAGES.taskProgressLine(completedTasks, totalTasks);
     const devIndicator =
-      process.env.NODE_ENV === "development" ? ` ${NOTIFICATION_MESSAGES.devHintIndicator}` : "";
+      process.env.SUPERAGENTS_DEBUG === "1" ? ` ${NOTIFICATION_MESSAGES.devHintIndicator}` : "";
     const visibleMessage = `${visibleStatus}\n${progressLine}${devIndicator}`;
 
     // Build hidden hint
@@ -324,7 +324,7 @@ export async function notifyResumeError(
     const visibleStatus = NOTIFICATION_MESSAGES.visibleResumeFailed(task.resumeCount, duration);
     const progressLine = NOTIFICATION_MESSAGES.taskProgressLine(completedTasks, totalTasks);
     const devIndicator =
-      process.env.NODE_ENV === "development" ? ` ${NOTIFICATION_MESSAGES.devHintIndicator}` : "";
+      process.env.SUPERAGENTS_DEBUG === "1" ? ` ${NOTIFICATION_MESSAGES.devHintIndicator}` : "";
     const visibleMessage = `${visibleStatus}\n${progressLine}${devIndicator}`;
 
     // Build hidden hint with error message
