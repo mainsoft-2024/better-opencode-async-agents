@@ -470,7 +470,8 @@ export class BackgroundManager {
                   this.client,
                   this.directory,
                   toolContext,
-                  (sessionID) => this.getTaskMessages(sessionID)
+                  (sessionID) => this.getTaskMessages(sessionID),
+                  () => this.getAllTasks()
                 );
                 return;
               }
@@ -485,7 +486,8 @@ export class BackgroundManager {
                   this.client,
                   this.directory,
                   toolContext,
-                  (sessionID) => this.getTaskMessages(sessionID)
+                  (sessionID) => this.getTaskMessages(sessionID),
+                  () => this.getAllTasks()
                 );
                 return;
               }
@@ -502,14 +504,17 @@ export class BackgroundManager {
           "Timeout waiting for response",
           this.client,
           this.directory,
-          toolContext
+          toolContext,
+          () => this.getAllTasks()
         );
       })
       .catch(async (error) => {
         setTaskStatus(task, "completed");
         await this.persistTask(task);
         const errorMsg = error instanceof Error ? error.message : String(error);
-        await notifyResumeError(task, errorMsg, this.client, this.directory, toolContext);
+        await notifyResumeError(task, errorMsg, this.client, this.directory, toolContext, () =>
+          this.getAllTasks()
+        );
       });
   }
 

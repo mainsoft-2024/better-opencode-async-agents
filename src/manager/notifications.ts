@@ -1,6 +1,11 @@
 import { COMPLETION_DISPLAY_DURATION, SPINNER_FRAMES } from "../constants";
 import { shortId } from "../helpers";
-import { NOTIFICATION_MESSAGES, PLACEHOLDER_TEXT, TOAST_TITLES } from "../prompts";
+import {
+  NOTIFICATION_MESSAGES,
+  PLACEHOLDER_TEXT,
+  SYSTEM_HINT_MESSAGES,
+  TOAST_TITLES,
+} from "../prompts";
 import type { BackgroundTask, OpencodeClient } from "../types";
 
 // =============================================================================
@@ -170,23 +175,28 @@ export function notifyParentSession(
       .catch(() => {});
   }
 
-  const leftoverWarning = runningTasks > 0 ? NOTIFICATION_MESSAGES.leftoverTasksWarning : "";
-  const taskStatusHeader =
+  // Build visible message
+  const visibleStatus =
     task.status === "completed"
-      ? NOTIFICATION_MESSAGES.taskCompleted
+      ? NOTIFICATION_MESSAGES.visibleTaskCompleted(task.description, duration)
       : task.status === "error"
-        ? NOTIFICATION_MESSAGES.taskFailed
-        : NOTIFICATION_MESSAGES.taskCancelled;
-  const message = NOTIFICATION_MESSAGES.taskCompletionBody(
-    taskStatusHeader,
-    task.description,
-    duration,
-    completedTasks,
-    totalTasks,
-    runningTasks,
-    shortId(task.sessionID),
-    leftoverWarning
-  );
+        ? NOTIFICATION_MESSAGES.visibleTaskFailed(task.description, duration)
+        : NOTIFICATION_MESSAGES.visibleTaskCancelled(task.description, duration);
+  const progressLine = NOTIFICATION_MESSAGES.taskProgressLine(completedTasks, totalTasks);
+  const devIndicator =
+    process.env.NODE_ENV === "development" ? ` ${NOTIFICATION_MESSAGES.devHintIndicator}` : "";
+  const visibleMessage = `${visibleStatus}\n${progressLine}${devIndicator}`;
+
+  // Build hidden hint based on batch status
+  const taskShortId = shortId(task.sessionID);
+  let hiddenHint: string;
+  if (task.status === "error") {
+    hiddenHint = SYSTEM_HINT_MESSAGES.errorHint(taskShortId, task.error || "Unknown error");
+  } else if (runningTasks > 0) {
+    hiddenHint = SYSTEM_HINT_MESSAGES.runningTasksHint(taskShortId);
+  } else {
+    hiddenHint = SYSTEM_HINT_MESSAGES.allTasksDoneHint(totalTasks);
+  }
 
   setTimeout(async () => {
     try {
@@ -201,7 +211,10 @@ export function notifyParentSession(
         path: { id: task.parentSessionID },
         body: {
           agent: task.parentAgent,
-          parts: [{ type: "text", text: message }],
+          parts: [
+            { type: "text", text: visibleMessage },
+            { type: "text", text: hiddenHint, synthetic: true },
+          ],
         },
         query: { directory },
       });
@@ -221,24 +234,53 @@ export async function notifyResumeComplete(
   toolContext: { sessionID: string; agent: string },
   getTaskMessages: (
     sessionID: string
-  ) => Promise<Array<{ info?: { role?: string }; parts?: Array<{ type?: string; text?: string }> }>>
+  ) => Promise<
+    Array<{ info?: { role?: string }; parts?: Array<{ type?: string; text?: string }> }>
+  >,
+  getTasksArray?: () => BackgroundTask[]
 ): Promise<void> {
   try {
-    const resumeHeader =
-      task.resumeCount > 1
-        ? NOTIFICATION_MESSAGES.resumeCompletedWithCount(task.resumeCount)
-        : NOTIFICATION_MESSAGES.resumeCompleted;
-    const notification = NOTIFICATION_MESSAGES.resumeCompletionBody(
-      resumeHeader,
-      task.description,
-      shortId(task.sessionID)
+    // Calculate duration
+    const duration = formatDuration(
+      new Date(task.startedAt),
+      task.completedAt ? new Date(task.completedAt) : undefined
     );
+
+    // Calculate batch progress if available
+    let completedTasks = 1;
+    let totalTasks = 1;
+    let runningTasks = 0;
+    if (getTasksArray) {
+      const batchTasks = getTasksArray().filter((t) => t.batchId === task.batchId);
+      totalTasks = batchTasks.length;
+      completedTasks = batchTasks.filter(
+        (t) => t.status === "completed" || t.status === "error" || t.status === "cancelled"
+      ).length;
+      runningTasks = batchTasks.filter((t) => t.status === "running").length;
+    }
+
+    // Build visible message
+    const visibleStatus = NOTIFICATION_MESSAGES.visibleResumeCompleted(task.resumeCount, duration);
+    const progressLine = NOTIFICATION_MESSAGES.taskProgressLine(completedTasks, totalTasks);
+    const devIndicator =
+      process.env.NODE_ENV === "development" ? ` ${NOTIFICATION_MESSAGES.devHintIndicator}` : "";
+    const visibleMessage = `${visibleStatus}\n${progressLine}${devIndicator}`;
+
+    // Build hidden hint
+    const taskShortId = shortId(task.sessionID);
+    const hiddenHint =
+      runningTasks > 0
+        ? SYSTEM_HINT_MESSAGES.runningTasksHint(taskShortId)
+        : SYSTEM_HINT_MESSAGES.resumeHint(taskShortId);
 
     await client.session.prompt({
       path: { id: toolContext.sessionID },
       body: {
         agent: toolContext.agent,
-        parts: [{ type: "text", text: notification }],
+        parts: [
+          { type: "text", text: visibleMessage },
+          { type: "text", text: hiddenHint, synthetic: true },
+        ],
       },
       query: { directory },
     });
@@ -255,25 +297,48 @@ export async function notifyResumeError(
   errorMessage: string,
   client: OpencodeClient,
   directory: string,
-  toolContext: { sessionID: string; agent: string }
+  toolContext: { sessionID: string; agent: string },
+  getTasksArray?: () => BackgroundTask[]
 ): Promise<void> {
   try {
-    const resumeHeader =
-      task.resumeCount > 1
-        ? NOTIFICATION_MESSAGES.resumeFailedWithCount(task.resumeCount)
-        : NOTIFICATION_MESSAGES.resumeFailed;
-    const notification = NOTIFICATION_MESSAGES.resumeErrorBody(
-      resumeHeader,
-      task.description,
-      errorMessage,
-      shortId(task.sessionID)
+    // Calculate duration
+    const duration = formatDuration(
+      new Date(task.startedAt),
+      task.completedAt ? new Date(task.completedAt) : undefined
     );
+
+    // Calculate batch progress if available
+    let completedTasks = 1;
+    let totalTasks = 1;
+    let runningTasks = 0;
+    if (getTasksArray) {
+      const batchTasks = getTasksArray().filter((t) => t.batchId === task.batchId);
+      totalTasks = batchTasks.length;
+      completedTasks = batchTasks.filter(
+        (t) => t.status === "completed" || t.status === "error" || t.status === "cancelled"
+      ).length;
+      runningTasks = batchTasks.filter((t) => t.status === "running").length;
+    }
+
+    // Build visible message
+    const visibleStatus = NOTIFICATION_MESSAGES.visibleResumeFailed(task.resumeCount, duration);
+    const progressLine = NOTIFICATION_MESSAGES.taskProgressLine(completedTasks, totalTasks);
+    const devIndicator =
+      process.env.NODE_ENV === "development" ? ` ${NOTIFICATION_MESSAGES.devHintIndicator}` : "";
+    const visibleMessage = `${visibleStatus}\n${progressLine}${devIndicator}`;
+
+    // Build hidden hint with error message
+    const taskShortId = shortId(task.sessionID);
+    const hiddenHint = SYSTEM_HINT_MESSAGES.errorHint(taskShortId, errorMessage);
 
     await client.session.prompt({
       path: { id: toolContext.sessionID },
       body: {
         agent: toolContext.agent,
-        parts: [{ type: "text", text: notification }],
+        parts: [
+          { type: "text", text: visibleMessage },
+          { type: "text", text: hiddenHint, synthetic: true },
+        ],
       },
       query: { directory },
     });

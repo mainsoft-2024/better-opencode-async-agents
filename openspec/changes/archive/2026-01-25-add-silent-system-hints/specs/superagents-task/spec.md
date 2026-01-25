@@ -76,29 +76,4 @@ The system SHALL display a visible indicator when hidden hints are attached in d
 - **AND** `process.env.NODE_ENV !== 'development'`
 - **THEN** no indicator is added to the visible message
 
-## MODIFIED Requirements
 
-### Requirement: Task Notification Delivery
-
-The system SHALL notify the parent session when a background task completes, fails, or is cancelled, using multi-part messages with synthetic content for AI guidance.
-
-#### Scenario: Notify on task completion
-
-- **WHEN** background task status changes to "completed"
-- **THEN** system sends multi-part notification to parent session via `session.prompt()`
-- **AND** first part is visible text (type: "text")
-- **AND** second part is synthetic hint (type: "text", synthetic: true)
-
-#### Scenario: Notify on task failure
-
-- **WHEN** background task status changes to "error"
-- **THEN** system sends multi-part notification to parent session
-- **AND** visible part shows failure status with error icon
-- **AND** synthetic part includes error message for AI context
-
-#### Scenario: Notify on task cancellation
-
-- **WHEN** background task status changes to "cancelled"
-- **THEN** system sends multi-part notification to parent session
-- **AND** visible part shows cancellation status
-- **AND** synthetic part provides AI guidance

@@ -202,6 +202,47 @@ Task "${description}" finished. Use superagents_output(task_id="${shortTaskId}")
     `${header}
 Task "${description}" failed: ${errorMessage}
 Use superagents_output(task_id="${shortTaskId}") for more details.`,
+
+  // Visible notification messages
+  visibleTaskCompleted: (description: string, duration: string) =>
+    `✓ **Agent "${description}" finished in ${duration}.**`,
+
+  visibleTaskFailed: (description: string, duration: string) =>
+    `✗ **Agent "${description}" failed in ${duration}.**`,
+
+  visibleTaskCancelled: (description: string, duration: string) =>
+    `⊘ **Agent "${description}" cancelled after ${duration}.**`,
+
+  visibleResumeCompleted: (resumeCount: number, duration: string) =>
+    `✓ **Resume #${resumeCount} completed in ${duration}.**`,
+
+  visibleResumeFailed: (resumeCount: number, duration: string) =>
+    `✗ **Resume #${resumeCount} failed in ${duration}.**`,
+
+  taskProgressLine: (completed: number, total: number) => `Task Progress: ${completed}/${total}`,
+
+  devHintIndicator: "[hint attached]",
+};
+
+// =============================================================================
+// System Hint Messages (hidden from user, sent via session.prompt() with synthetic: true)
+// =============================================================================
+
+export const SYSTEM_HINT_MESSAGES = {
+  runningTasksHint: (taskId: string) =>
+    `If you need results immediately, use superagents_output(task_id="${taskId}").
+You can continue working or just say 'waiting' and halt.
+WATCH OUT for leftovers, you will likely WANT to wait for all agents to complete.`,
+
+  allTasksDoneHint: (totalCount: number) =>
+    `All ${totalCount} tasks finished.
+Use superagents_output tools to see agent responses.`,
+
+  errorHint: (taskId: string, errorMessage: string) =>
+    `Task failed: ${errorMessage}
+Use superagents_output(task_id="${taskId}") for details.`,
+
+  resumeHint: (taskId: string) => `Use superagents_output(task_id="${taskId}") for full response.`,
 };
 
 // =============================================================================
