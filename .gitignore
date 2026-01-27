@@ -148,5 +148,9 @@ temp/
 docs/
 docs/*
 
+# Claude Code
+.claude/
+CLAUDE.md
+
 # test
 test_heuristic/
