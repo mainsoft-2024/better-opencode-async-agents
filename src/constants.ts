@@ -39,7 +39,7 @@ function getHomeDir(): string {
 }
 
 const HOME_DIR = getHomeDir();
-export const STORAGE_DIR = `${HOME_DIR}/.opencode/plugins/opencode-superagents`;
+export const STORAGE_DIR = `${HOME_DIR}/.opencode/plugins/better-opencode-async-agents`;
 export const TASKS_FILE = `${STORAGE_DIR}/tasks.json`;
 
 // =============================================================================

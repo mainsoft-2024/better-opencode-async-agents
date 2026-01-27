@@ -1,6 +1,6 @@
 {
-  "name": "@paulp-o/opencode-async-superagents",
-  "version": "0.3.1",
+  "name": "better-opencode-async-agents",
+  "version": "0.1.0",
   "description": "Background task management plugin for OpenCode AI",
   "type": "module",
   "main": "./dist/index.js",
@@ -29,12 +29,12 @@
   "author": "paulpark",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/mainsoft-2024/opencode-async-superagents.git"
+    "url": "git+https://github.com/mainsoft-2024/better-opencode-async-agents.git"
   },
   "bugs": {
-    "url": "https://github.com/mainsoft-2024/opencode-async-superagents/issues"
+    "url": "https://github.com/mainsoft-2024/better-opencode-async-agents/issues"
   },
-  "homepage": "https://github.com/mainsoft-2024/opencode-async-superagents#readme",
+  "homepage": "https://github.com/mainsoft-2024/better-opencode-async-agents#readme",
   "peerDependencies": {
     "@opencode-ai/plugin": "^1.0.0"
   },

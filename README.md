@@ -1,7 +1,7 @@
-# OpenCode SuperAgents 
+# Better OpenCode Async Agents
 
-[![npm version](https://img.shields.io/npm/v/@paulp-o/opencode-superagents)](https://www.npmjs.com/package/@paulp-o/opencode-superagents)
-[![license](https://img.shields.io/npm/l/@paulp-o/opencode-superagents)](https://github.com/paulp-o/opencode-superagents/blob/main/LICENSE)
+[![npm version](https://img.shields.io/npm/v/better-opencode-async-agents)](https://www.npmjs.com/package/better-opencode-async-agents)
+[![license](https://img.shields.io/npm/l/better-opencode-async-agents)](https://github.com/mainsoft-2024/better-opencode-async-agents/blob/main/LICENSE)
 
 An unopinionated, **Non-Blocking(optional), Async** Background agent plugin for OpenCode, **same as (or better than) that of Claude Code!**
 
@@ -11,7 +11,7 @@ Add the plugin to your `opencode.json(c)`:
 
 ```json
 {
-  "plugin": ["@paulp-o/opencode-superagents"]
+  "plugin": ["better-opencode-async-agents"]
 }
 ```
 
@@ -64,4 +64,4 @@ MIT
 
 ## Support
 
-For issues, questions, or contributions, please visit the [GitHub repository](https://github.com/paulp-o/opencode-superagents).
+For issues, questions, or contributions, please visit the [GitHub repository](https://github.com/mainsoft-2024/better-opencode-async-agents).
