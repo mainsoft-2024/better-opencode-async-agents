@@ -1,7 +1,7 @@
 # Better OpenCode Async Agents
 
-[![GitHub Package](https://img.shields.io/github/v/release/mainsoft-2024/better-opencode-async-agents)](https://github.com/mainsoft-2024/better-opencode-async-agents/packages)
-[![license](https://img.shields.io/github/license/mainsoft-2024/better-opencode-async-agents)](https://github.com/mainsoft-2024/better-opencode-async-agents/blob/main/LICENSE)
+[![npm version](https://img.shields.io/npm/v/better-opencode-async-agents)](https://www.npmjs.com/package/better-opencode-async-agents)
+[![license](https://img.shields.io/npm/l/better-opencode-async-agents)](https://github.com/mainsoft-2024/better-opencode-async-agents/blob/main/LICENSE)
 
 An unopinionated, **Non-Blocking(optional), Async** Background agent plugin for OpenCode, **same as (or better than) that of Claude Code!**
 
@@ -11,7 +11,7 @@ Add the plugin to your `opencode.json(c)`:
 
 ```json
 {
-  "plugin": ["@mainsoft-2024/better-opencode-async-agents"]
+  "plugin": ["better-opencode-async-agents"]
 }
 ```
 

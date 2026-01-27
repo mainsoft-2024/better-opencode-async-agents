@@ -1,10 +1,7 @@
 {
-  "name": "@mainsoft-2024/better-opencode-async-agents",
+  "name": "better-opencode-async-agents",
   "version": "0.1.0",
   "description": "Background task management plugin for OpenCode AI",
-  "publishConfig": {
-    "registry": "https://npm.pkg.github.com"
-  },
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
