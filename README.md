@@ -4,10 +4,15 @@
 [![license](https://img.shields.io/npm/l/better-opencode-async-agents)](https://github.com/mainsoft-2024/better-opencode-async-agents/blob/main/LICENSE)
 
 An unopinionated, 
+
 **Async**, 
+
 Forkable, 
+
 Resumable, 
+
 Parallelizable
+
 multi-agent plugin for OpenCode.
 
 ## Configuration
