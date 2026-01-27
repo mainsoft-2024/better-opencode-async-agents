@@ -42,12 +42,11 @@ This is the subagent/subtask plugin we all know and love, with some key features
 
 | Tool | Description |
 |------|-------------|
-| `superagents_task` | Launch async background agent tasks with description, prompt, and agent type |
-| `superagents_output` | Get task results (blocking or non-blocking) with configurable timeout |
-| `superagents_cancel` | Cancel a running task |
-| `superagents_resume` | Resume a completed task with a follow-up message |
-| `superagents_list` | List all tasks with optional status filter |
-| `superagents_clear` | Abort and clear all tasks |
+| `asyncagents_task` | Launch async background agent tasks with description, prompt, and agent type |
+| `asyncagents_output` | Get task results (blocking or non-blocking) with configurable timeout |
+| `asyncagents_cancel` | Cancel a running task |
+| `asyncagents_list` | List all tasks with optional status filter |
+| `asyncagents_clear` | Abort and clear all tasks |
 
 ## Philosophy
 

@@ -11,6 +11,12 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 - **Tool call parameter preview**: Forked context now shows tool parameters (up to 200 chars) instead of just tool names
 
 ### Breaking Changes
+- **BREAKING** Renamed all tools from `superagents_*` to `asyncagents_*`:
+  - `superagents_task` → `asyncagents_task`
+  - `superagents_output` → `asyncagents_output`
+  - `superagents_cancel` → `asyncagents_cancel`
+  - `superagents_list` → `asyncagents_list`
+  - `superagents_clear` → `asyncagents_clear`
 - **BREAKING** Renamed all tools from `background_*` to `superagents_*`:
   - `background_task` → `superagents_task`
   - `background_output` → `superagents_output`
