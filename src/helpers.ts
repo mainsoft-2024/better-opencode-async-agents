@@ -62,11 +62,11 @@ export function setTaskStatus(
  */
 export function shortId(sessionId: string, minLen = 8): string {
   if (!sessionId.startsWith("ses_")) {
-    // Fallback for non-standard IDs: just take first (minLen + 4) chars
-    return sessionId.slice(0, minLen + 4);
+    // Fallback for non-standard IDs: just take first minLen chars
+    return sessionId.slice(0, minLen);
   }
   const suffix = sessionId.slice(4); // Remove "ses_"
-  return `ses_${suffix.slice(0, minLen)}`;
+  return suffix.slice(0, minLen);
 }
 
 /**
@@ -80,22 +80,24 @@ export function shortId(sessionId: string, minLen = 8): string {
  */
 export function uniqueShortId(sessionId: string, siblingIds: string[], minLen = 8): string {
   if (!sessionId.startsWith("ses_")) {
-    return sessionId.slice(0, minLen + 4);
+    return sessionId.slice(0, minLen);
   }
 
   const suffix = sessionId.slice(4);
 
   for (let len = minLen; len <= suffix.length; len++) {
-    const candidate = `ses_${suffix.slice(0, len)}`;
-    // Check if any sibling full ID also starts with this candidate
-    const hasClash = siblingIds.some(
-      (otherId) => otherId !== sessionId && otherId.startsWith(candidate)
-    );
+    const candidate = suffix.slice(0, len);
+    // Check if any sibling's suffix also starts with this candidate
+    const hasClash = siblingIds.some((otherId) => {
+      if (otherId === sessionId) return false;
+      const otherSuffix = otherId.startsWith("ses_") ? otherId.slice(4) : otherId;
+      return otherSuffix.startsWith(candidate);
+    });
     if (!hasClash) return candidate;
   }
 
-  // Fallback: return full ID (always unique)
-  return sessionId;
+  // Fallback: return full suffix (always unique)
+  return suffix;
 }
 
 export function formatDuration(startStr: string, endStr?: string): string {

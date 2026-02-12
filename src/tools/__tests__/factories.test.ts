@@ -1,4 +1,5 @@
 import { describe, expect, mock, test } from "bun:test";
+import { shortId } from "../../helpers";
 import type { BackgroundTask } from "../../types";
 import { createBackgroundCancel } from "../cancel";
 import { createBackgroundClear } from "../clear";
@@ -24,6 +25,7 @@ const createMockTask = (overrides: Partial<BackgroundTask> = {}): BackgroundTask
 const createMockTaskManager = (launchMock = mock(() => Promise.resolve(createMockTask()))) => ({
   launch: launchMock,
   getTask: mock(() => undefined as BackgroundTask | undefined),
+  getTaskSessionIds: mock(() => [] as string[]),
   resolveTaskId: mock(() => null as string | null),
   resolveTaskIdWithFallback: mock(() => Promise.resolve(null as string | null)),
   getTaskWithFallback: mock(() => Promise.resolve(undefined as BackgroundTask | undefined)),
@@ -66,7 +68,7 @@ describe("tool factories", () => {
       );
 
       expect(result).toContain("Background task launched");
-      expect(result).toContain(mockTask.sessionID);
+      expect(result).toContain(shortId(mockTask.sessionID)); // shortId removes ses_ prefix
       expect(launchMock).toHaveBeenCalled();
     });
   });
@@ -124,8 +126,8 @@ describe("tool factories", () => {
 
       const result = await tool.execute({ status: "running" }, {} as any);
 
-      expect(result).toContain("ses_1");
-      expect(result).not.toContain("ses_2");
+      expect(result).toContain("1"); // shortId of ses_1
+      expect(result).not.toContain("2"); // shortId of ses_2 is 2
     });
   });
 
