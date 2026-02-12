@@ -127,7 +127,7 @@ export function showProgressToast(
     const icon =
       task.status === "completed" ? "✓" : task.status === "error" ? "✗" : "⊘";
     const callCount = task.progress?.toolCalls ?? 0;
-    const callsStr = callCount > 0 ? ` [${callCount} calls]` : "";
+    const callsStr = callCount > 0 ? ` 🔧${callCount}` : "";
     taskLines.push(
       `${icon} [${shortId(task.sessionID)}] ${task.agent}: ${task.description} (${duration})${callsStr}`,
     );
@@ -307,9 +307,7 @@ export async function notifyResumeComplete(
   client: OpencodeClient,
   directory: string,
   toolContext: { sessionID: string; agent: string },
-  getTaskMessages: (
-    sessionID: string,
-  ) => Promise<
+  getTaskMessages: (sessionID: string) => Promise<
     Array<{
       info?: { role?: string };
       parts?: Array<{ type?: string; text?: string }>;
