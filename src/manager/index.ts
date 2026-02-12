@@ -206,9 +206,11 @@ export class BackgroundManager {
    * Returns tasks sorted by creation time (most recent first).
    */
   findTasksByPrefix(prefix: string): BackgroundTask[] {
+    // Normalize prefix to include ses_ if user omitted it
+    const normalizedPrefix = prefix.startsWith("ses_") ? prefix : `ses_${prefix}`;
     const matching: BackgroundTask[] = [];
     for (const [id] of this.tasks) {
-      if (id.startsWith(prefix)) {
+      if (id.startsWith(normalizedPrefix)) {
         const task = this.tasks.get(id);
         if (task) {
           matching.push(task);
@@ -231,6 +233,12 @@ export class BackgroundManager {
     // Direct lookup first (exact match)
     if (this.tasks.has(idOrPrefix)) {
       return idOrPrefix;
+    }
+
+    // Also try with ses_ prefix for direct match (if user omitted it)
+    const withPrefix = idOrPrefix.startsWith("ses_") ? idOrPrefix : `ses_${idOrPrefix}`;
+    if (withPrefix !== idOrPrefix && this.tasks.has(withPrefix)) {
+      return withPrefix;
     }
 
     // Prefix matching
@@ -266,9 +274,16 @@ export class BackgroundManager {
         return idOrPrefix;
       }
 
-      // Prefix matching on disk
+      // Also try with ses_ prefix for direct match (if user omitted it)
+      const withPrefix = idOrPrefix.startsWith("ses_") ? idOrPrefix : `ses_${idOrPrefix}`;
+      if (withPrefix !== idOrPrefix && persistedIds.includes(withPrefix)) {
+        return withPrefix;
+      }
+
+      // Prefix matching on disk (use normalized prefix)
+      const normalizedPrefix = idOrPrefix.startsWith("ses_") ? idOrPrefix : `ses_${idOrPrefix}`;
       const matching = persistedIds
-        .filter((id) => id.startsWith(idOrPrefix))
+        .filter((id) => id.startsWith(normalizedPrefix))
         .map((id) => ({ id, task: persisted[id] }))
         .filter(
           (item): item is { id: string; task: NonNullable<typeof item.task> } =>
