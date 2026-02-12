@@ -1,6 +1,6 @@
 {
   "name": "better-opencode-async-agents",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "Background task management plugin for OpenCode AI",
   "type": "module",
   "main": "./dist/index.js",
