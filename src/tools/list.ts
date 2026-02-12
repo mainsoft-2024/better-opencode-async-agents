@@ -59,7 +59,17 @@ export function createBackgroundList(manager: {
               .join(" ");
             const shortId = uniqueShortId(task.sessionID, allSessionIds);
             const idWithIndicators = indicators ? `${shortId} ${indicators}` : shortId;
-            return `| \`${idWithIndicators}\` | ${desc} | ${task.agent} | ${icon} ${task.status} | ${duration} |`;
+            const toolsInfo =
+              task.progress?.toolCallsByName &&
+              Object.keys(task.progress.toolCallsByName).length > 0
+                ? Object.entries(task.progress.toolCallsByName)
+                    .sort(([, a], [, b]) => b - a)
+                    .map(([name, count]) => `${name}:${count}`)
+                    .join(" ")
+                : task.progress?.toolCalls
+                  ? `${task.progress.toolCalls} calls`
+                  : "-";
+            return `| \`${idWithIndicators}\` | ${desc} | ${task.agent} | ${icon} ${task.status} | ${duration} | ${toolsInfo} |`;
           })
           .join("\n");
 
@@ -67,12 +77,13 @@ export function createBackgroundList(manager: {
         const completed = tasks.filter((t) => t.status === "completed").length;
         const errored = tasks.filter((t) => t.status === "error").length;
         const cancelled = tasks.filter((t) => t.status === "cancelled").length;
+        const totalToolCalls = tasks.reduce((sum, t) => sum + (t.progress?.toolCalls ?? 0), 0);
 
         return `${header}
 ${rows}
 
 ---
-${FORMAT_TEMPLATES.listSummary(tasks.length, running, completed, errored, cancelled)}`;
+${FORMAT_TEMPLATES.listSummary(tasks.length, running, completed, errored, cancelled, totalToolCalls)}`;
       } catch (error) {
         return ERROR_MESSAGES.listFailed(error instanceof Error ? error.message : String(error));
       }

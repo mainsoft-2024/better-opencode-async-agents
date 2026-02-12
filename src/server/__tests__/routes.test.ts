@@ -235,6 +235,65 @@ describe("handleStats", () => {
     expect(body.duration.min).toBe(30000);
     expect(body.duration.max).toBe(30000);
   });
+
+  test("computes toolCallsByName aggregated across all tasks", async () => {
+    const tasks = [
+      createMockTask({
+        status: "completed",
+        progress: {
+          toolCalls: 5,
+          lastTools: ["read", "grep"],
+          lastUpdate: new Date().toISOString(),
+          toolCallsByName: { read: 3, grep: 2 },
+        },
+      }),
+      createMockTask({
+        status: "running",
+        progress: {
+          toolCalls: 3,
+          lastTools: ["read", "edit"],
+          lastUpdate: new Date().toISOString(),
+          toolCallsByName: { read: 2, edit: 1 },
+        },
+      }),
+      createMockTask({
+        status: "completed",
+        progress: {
+          toolCalls: 4,
+          lastTools: ["write", "grep"],
+          lastUpdate: new Date().toISOString(),
+          toolCallsByName: { write: 3, grep: 1 },
+        },
+      }),
+      createMockTask({
+        status: "running",
+        // No progress
+      }),
+    ];
+    const manager = createMockManager(tasks);
+    const request = new Request("http://localhost:5165/stats");
+
+    const response = handleStats(request, manager);
+    const body = await response.json();
+
+    expect(body.toolCallsByName).toEqual({
+      read: 5, // 3 + 2
+      grep: 3, // 2 + 1
+      edit: 1, // 1
+      write: 3, // 3
+    });
+  });
+
+  test("returns empty toolCallsByName when no tasks have progress", async () => {
+    const tasks = [createMockTask({ status: "running" }), createMockTask({ status: "completed" })];
+    const manager = createMockManager(tasks);
+    const request = new Request("http://localhost:5165/stats");
+
+    const response = handleStats(request, manager);
+    const body = await response.json();
+
+    expect(body.toolCallsByName).toEqual({});
+  });
 });
 
 // =============================================================================
@@ -586,12 +645,22 @@ describe("handleTaskGroup", () => {
       createMockTask({
         sessionID: "ses_1",
         batchId: "batch_g1",
-        progress: { toolCalls: 10, lastTools: ["read"], lastUpdate: new Date().toISOString() },
+        progress: {
+          toolCalls: 10,
+          lastTools: ["read"],
+          lastUpdate: new Date().toISOString(),
+          toolCallsByName: { read: 8, grep: 2 },
+        },
       }),
       createMockTask({
         sessionID: "ses_2",
         batchId: "batch_g1",
-        progress: { toolCalls: 5, lastTools: ["write"], lastUpdate: new Date().toISOString() },
+        progress: {
+          toolCalls: 5,
+          lastTools: ["write"],
+          lastUpdate: new Date().toISOString(),
+          toolCallsByName: { write: 5 },
+        },
       }),
       createMockTask({
         sessionID: "ses_3",
@@ -606,6 +675,53 @@ describe("handleTaskGroup", () => {
     const body = await response.json();
 
     expect(body.stats.totalToolCalls).toBe(15);
+  });
+
+  test("computes toolCallsByName aggregated across group tasks", async () => {
+    const tasks = [
+      createMockTask({
+        sessionID: "ses_1",
+        batchId: "batch_g1",
+        progress: {
+          toolCalls: 10,
+          lastTools: ["read"],
+          lastUpdate: new Date().toISOString(),
+          toolCallsByName: { read: 8, grep: 2 },
+        },
+      }),
+      createMockTask({
+        sessionID: "ses_2",
+        batchId: "batch_g1",
+        progress: {
+          toolCalls: 5,
+          lastTools: ["write"],
+          lastUpdate: new Date().toISOString(),
+          toolCallsByName: { write: 5 },
+        },
+      }),
+      createMockTask({
+        sessionID: "ses_3",
+        batchId: "batch_g1",
+        progress: {
+          toolCalls: 3,
+          lastTools: ["edit"],
+          lastUpdate: new Date().toISOString(),
+          toolCallsByName: { read: 1, edit: 2 },
+        },
+      }),
+    ];
+    const manager = createMockManager(tasks);
+    const request = new Request("http://localhost:5165/groups/batch_g1");
+
+    const response = handleTaskGroup(request, manager, "batch_g1");
+    const body = await response.json();
+
+    expect(body.stats.toolCallsByName).toEqual({
+      read: 9, // 8 + 1
+      grep: 2, // 2
+      write: 5, // 5
+      edit: 2, // 2
+    });
   });
 
   test("computes duration from min start to max end", async () => {

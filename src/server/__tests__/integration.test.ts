@@ -19,7 +19,12 @@ const mockTasks: BackgroundTask[] = [
     startedAt: "2026-02-10T10:00:00.000Z",
     completedAt: "2026-02-10T10:01:00.000Z",
     batchId: "batch_1",
-    progress: { toolCalls: 5, lastTools: ["read", "grep"], lastUpdate: "2026-02-10T10:01:00.000Z" },
+    progress: {
+      toolCalls: 5,
+      lastTools: ["read", "grep"],
+      lastUpdate: "2026-02-10T10:01:00.000Z",
+      toolCallsByName: { read: 3, grep: 2 },
+    },
     isForked: false,
     resumeCount: 0,
     result: "Found 42 files",
@@ -35,7 +40,12 @@ const mockTasks: BackgroundTask[] = [
     status: "running",
     startedAt: "2026-02-10T10:02:00.000Z",
     batchId: "batch_1",
-    progress: { toolCalls: 3, lastTools: ["read"], lastUpdate: "2026-02-10T10:02:30.000Z" },
+    progress: {
+      toolCalls: 3,
+      lastTools: ["read"],
+      lastUpdate: "2026-02-10T10:02:30.000Z",
+      toolCallsByName: { read: 3 },
+    },
     isForked: true,
     resumeCount: 0,
   },
@@ -51,7 +61,12 @@ const mockTasks: BackgroundTask[] = [
     startedAt: "2026-02-10T10:03:00.000Z",
     completedAt: "2026-02-10T10:04:00.000Z",
     batchId: "batch_2",
-    progress: { toolCalls: 2, lastTools: ["edit"], lastUpdate: "2026-02-10T10:04:00.000Z" },
+    progress: {
+      toolCalls: 2,
+      lastTools: ["edit"],
+      lastUpdate: "2026-02-10T10:04:00.000Z",
+      toolCallsByName: { edit: 2 },
+    },
     error: "Session expired",
     isForked: false,
     resumeCount: 1,
@@ -225,6 +240,13 @@ describe("StatusApiServer Integration", () => {
       expect(body.duration.avg).toBeGreaterThan(0); // 60 seconds in ms
       expect(body.duration.max).toBe(body.duration.avg); // only one completed task
       expect(body.duration.min).toBe(body.duration.avg);
+
+      // Check toolCallsByName aggregation
+      expect(body.toolCallsByName).toEqual({
+        read: 6, // 3 from ses_test1 + 3 from ses_test2
+        grep: 2, // 2 from ses_test1
+        edit: 2, // 2 from ses_test3
+      });
     });
   });
 

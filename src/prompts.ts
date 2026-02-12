@@ -285,17 +285,18 @@ Error fetching messages: ${errMsg}`,
 
   listHeader: `# Background Tasks
 
-| Task ID | Description | Agent | Status | Duration |
-|---------|-------------|-------|--------|----------|`,
+| Task ID | Description | Agent | Status | Duration | Tools |
+|---------|-------------|-------|--------|----------|-------|`,
 
   listSummary: (
     total: number,
     running: number,
     completed: number,
     errored: number,
-    cancelled: number
+    cancelled: number,
+    totalToolCalls: number
   ) =>
-    `**Total: ${total}** | ⏳ ${running} running | ✓ ${completed} completed | ✗ ${errored} error | ⊘ ${cancelled} cancelled`,
+    `**Total: ${total}** | ⏳ ${running} running | ✓ ${completed} completed | ✗ ${errored} error | ⊘ ${cancelled} cancelled | 🔧 ${totalToolCalls} tool calls`,
 
   progressSection: (tools: string[]) => `\n| Last tools | ${tools.join(" → ")} |`,
 };

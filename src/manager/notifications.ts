@@ -55,6 +55,16 @@ export function showProgressToast(
 
   const totalToolCalls = batchTasks.reduce((sum, t) => sum + (t.progress?.toolCalls ?? 0), 0);
 
+  // Aggregate tool calls by name across batch tasks
+  const aggregatedToolCalls: Record<string, number> = {};
+  for (const t of batchTasks) {
+    if (t.progress?.toolCallsByName) {
+      for (const [toolName, count] of Object.entries(t.progress.toolCallsByName)) {
+        aggregatedToolCalls[toolName] = (aggregatedToolCalls[toolName] ?? 0) + count;
+      }
+    }
+  }
+
   const taskLines: string[] = [];
 
   const batchRunning = runningTasks.filter((t) => t.batchId === activeBatchId);
@@ -105,7 +115,18 @@ export function showProgressToast(
   const filledLength = Math.round((finishedCount / Math.max(totalTasks, 1)) * barLength);
   const progressBar = "█".repeat(filledLength) + "░".repeat(barLength - filledLength);
 
-  const summary = `[${progressBar}] ${finishedCount}/${totalTasks} agents (${progressPercent}%) | ${totalToolCalls} tool calls`;
+  // Build per-tool breakdown string
+  const sortedTools = Object.entries(aggregatedToolCalls).sort(([, a], [, b]) => b - a);
+  let toolBreakdown = "";
+  if (sortedTools.length > 0) {
+    const top3 = sortedTools
+      .slice(0, 3)
+      .map(([name, count]) => `${name}:${count}`)
+      .join(" ");
+    const remaining = sortedTools.length - 3;
+    toolBreakdown = remaining > 0 ? ` (${top3} +${remaining} more)` : ` (${top3})`;
+  }
+  const summary = `[${progressBar}] ${finishedCount}/${totalTasks} agents (${progressPercent}%) | ${totalToolCalls} calls${toolBreakdown}`;
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const tuiClient = client as any;

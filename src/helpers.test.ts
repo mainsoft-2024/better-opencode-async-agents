@@ -208,6 +208,7 @@ describe("helpers", () => {
       const task = createMockTask({
         progress: {
           toolCalls: 5,
+          toolCallsByName: {},
           lastTools: ["read", "write", "bash"],
           lastUpdate: new Date().toISOString(),
         },

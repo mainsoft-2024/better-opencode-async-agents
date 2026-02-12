@@ -213,6 +213,7 @@ export async function updateTaskProgress(
     const messages = messagesResult.data as any[];
 
     let toolCalls = 0;
+    const toolCallsByName: Record<string, number> = {};
     const allTools: string[] = [];
 
     for (const msg of messages) {
@@ -224,6 +225,7 @@ export async function updateTaskProgress(
       for (const part of parts) {
         if (part.type === "tool" && part.tool) {
           toolCalls++;
+          toolCallsByName[part.tool] = (toolCallsByName[part.tool] ?? 0) + 1;
           allTools.push(part.tool);
         }
       }
@@ -232,11 +234,13 @@ export async function updateTaskProgress(
     if (!task.progress) {
       task.progress = {
         toolCalls: 0,
+        toolCallsByName: {},
         lastTools: [],
         lastUpdate: new Date().toISOString(),
       };
     }
     task.progress.toolCalls = toolCalls;
+    task.progress.toolCallsByName = toolCallsByName;
     task.progress.lastTools = allTools.slice(-3);
     task.progress.lastUpdate = new Date().toISOString();
   } catch {

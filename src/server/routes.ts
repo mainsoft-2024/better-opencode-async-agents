@@ -42,12 +42,20 @@ export function handleStats(_req: Request, manager: RouteManager): Response {
 
   const byStatus: Record<string, number> = {};
   const byAgent: Record<string, number> = {};
+  const toolCallsByName: Record<string, number> = {};
   const durations: number[] = [];
   let activeTasks = 0;
 
   for (const task of tasks) {
     byStatus[task.status] = (byStatus[task.status] ?? 0) + 1;
     byAgent[task.agent] = (byAgent[task.agent] ?? 0) + 1;
+
+    // Aggregate tool calls by name
+    if (task.progress?.toolCallsByName) {
+      for (const [toolName, count] of Object.entries(task.progress.toolCallsByName)) {
+        toolCallsByName[toolName] = (toolCallsByName[toolName] ?? 0) + count;
+      }
+    }
 
     if (task.status === "running" || task.status === "resumed") {
       activeTasks++;
@@ -63,6 +71,7 @@ export function handleStats(_req: Request, manager: RouteManager): Response {
   const body: StatsResponse = {
     byStatus,
     byAgent,
+    toolCallsByName,
     duration: {
       avg: durations.length > 0 ? durations.reduce((a, b) => a + b, 0) / durations.length : 0,
       max: durations.length > 0 ? Math.max(...durations) : 0,
@@ -189,6 +198,7 @@ export function handleTaskGroup(req: Request, manager: RouteManager, groupId: st
   let error = 0;
   let cancelled = 0;
   let totalToolCalls = 0;
+  const toolCallsByName: Record<string, number> = {};
   let minStart = Number.POSITIVE_INFINITY;
   let maxEnd = 0;
 
@@ -199,6 +209,13 @@ export function handleTaskGroup(req: Request, manager: RouteManager, groupId: st
     else if (t.status === "cancelled") cancelled++;
 
     totalToolCalls += t.progress?.toolCalls || 0;
+
+    // Aggregate tool calls by name
+    if (t.progress?.toolCallsByName) {
+      for (const [toolName, count] of Object.entries(t.progress.toolCallsByName)) {
+        toolCallsByName[toolName] = (toolCallsByName[toolName] ?? 0) + count;
+      }
+    }
 
     if (t.startedAt) {
       const s = new Date(t.startedAt).getTime();
@@ -224,6 +241,7 @@ export function handleTaskGroup(req: Request, manager: RouteManager, groupId: st
       total,
       completionRate: total > 0 ? completed / total : 0,
       totalToolCalls,
+      toolCallsByName,
       duration,
     },
   };

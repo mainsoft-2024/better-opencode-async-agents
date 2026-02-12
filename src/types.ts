@@ -8,6 +8,7 @@ export type BackgroundTaskStatus = "running" | "completed" | "error" | "cancelle
 
 export interface TaskProgress {
   toolCalls: number;
+  toolCallsByName: Record<string, number>;
   lastTools: string[];
   lastUpdate: string;
 }

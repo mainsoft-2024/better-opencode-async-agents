@@ -117,6 +117,7 @@ export async function launchTask(
     isForked: input.fork ?? false,
     progress: {
       toolCalls: 0,
+      toolCallsByName: {},
       lastTools: [],
       lastUpdate: new Date().toISOString(),
     },
