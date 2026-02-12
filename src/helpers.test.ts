@@ -1,5 +1,12 @@
 import { describe, expect, test } from "bun:test";
-import { formatDuration, formatTaskStatus, getStatusIcon, shortId, truncateText } from "./helpers";
+import {
+  formatDuration,
+  formatTaskStatus,
+  getStatusIcon,
+  shortId,
+  truncateText,
+  uniqueShortId,
+} from "./helpers";
 import type { BackgroundTask } from "./types";
 
 describe("helpers", () => {
@@ -48,6 +55,72 @@ describe("helpers", () => {
 
     test("handles empty suffix after ses_ prefix", () => {
       expect(shortId("ses_")).toBe("ses_");
+    });
+
+    test("handles custom minLen parameter", () => {
+      expect(shortId("ses_41e080918ffeyhQtX6E4vERe4O", 12)).toBe("ses_41e080918ffe");
+    });
+  });
+
+  describe("uniqueShortId", () => {
+    test("returns 8-char short ID when no collision", () => {
+      const id = "ses_41e080918ffeyhQtX6E4vERe4O";
+      const siblings = ["ses_99999999abcdefg"];
+      expect(uniqueShortId(id, siblings)).toBe("ses_41e08091");
+    });
+
+    test("extends length when collision with sibling", () => {
+      const id1 = "ses_41e080918ffeyhQtX6E4vERe4O";
+      const id2 = "ses_41e08091a2bcDE3fG7hIjKlMnO";
+      // id1 and id2 share first 8 suffix chars
+      expect(uniqueShortId(id1, [id2])).not.toBe(uniqueShortId(id2, [id1]));
+      // Both should be longer than 8 chars suffix
+      expect(uniqueShortId(id1, [id2]).length).toBeGreaterThan(12);
+      expect(uniqueShortId(id2, [id1]).length).toBeGreaterThan(12);
+    });
+
+    test("returns full ID if entire suffix matches other sibling", () => {
+      const id1 = "ses_abcdefgh";
+      const id2 = "ses_abcdefghij";
+      // id2 starts with id1's full content, but id1 is unique among siblings
+      // Actually id1 should get its full ID because id2 starts with it
+      expect(uniqueShortId(id1, [id2])).toBe("ses_abcdefgh");
+    });
+
+    test("handles empty siblings array", () => {
+      expect(uniqueShortId("ses_12345678abcdef", [])).toBe("ses_12345678");
+    });
+
+    test("handles non-standard IDs", () => {
+      // non-standard IDs (not starting with "ses_") get first (minLen + 4) chars
+      // "bg_" is 3 chars, so with minLen=8, we get 11 chars total
+      expect(uniqueShortId("bg_1234567890abcdef", [])).toBe("bg_123456789");
+    });
+
+    test("ignores self when checking for collisions", () => {
+      const id = "ses_41e080918ffeyhQtX6E4vERe4O";
+      // Including the same ID in siblings should not cause a collision with itself
+      expect(uniqueShortId(id, [id])).toBe("ses_41e08091");
+    });
+
+    test("handles multiple collisions requiring longer prefix", () => {
+      const id1 = "ses_41e080918ffeyhQtX6E4vERe4O";
+      const id2 = "ses_41e08091a2bcDE3fG7hIjKlMnO";
+      const id3 = "ses_41e08091a2bcXyZ9876543210Ab";
+      // All three share prefix "ses_41e08091a2bc"
+      const result1 = uniqueShortId(id1, [id2, id3]);
+      const result2 = uniqueShortId(id2, [id1, id3]);
+      const result3 = uniqueShortId(id3, [id1, id2]);
+
+      // All three should be unique
+      expect(result1).not.toBe(result2);
+      expect(result2).not.toBe(result3);
+      expect(result1).not.toBe(result3);
+
+      // All should be longer than default 8-char suffix
+      expect(result1.length).toBeGreaterThan(12);
+      expect(result2.length).toBeGreaterThan(12);
+      expect(result3.length).toBeGreaterThan(12);
     });
   });
 

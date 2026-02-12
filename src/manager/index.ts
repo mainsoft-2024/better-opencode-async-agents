@@ -334,6 +334,13 @@ export class BackgroundManager {
     return Array.from(this.tasks.values());
   }
 
+  /**
+   * Gets all task session IDs (full IDs) for collision-free short ID generation.
+   */
+  getTaskSessionIds(): string[] {
+    return Array.from(this.tasks.keys());
+  }
+
   async getTaskMessages(sessionID: string): Promise<
     Array<{
       info?: { role?: string };

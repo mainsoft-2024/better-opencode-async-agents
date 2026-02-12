@@ -1,5 +1,5 @@
 import { type ToolDefinition, tool } from "@opencode-ai/plugin";
-import { formatDuration, getStatusIcon, shortId } from "../helpers";
+import { formatDuration, getStatusIcon, uniqueShortId } from "../helpers";
 import { ERROR_MESSAGES, FORMAT_TEMPLATES, TOOL_DESCRIPTIONS } from "../prompts";
 import type { BackgroundTask } from "../types";
 
@@ -40,6 +40,9 @@ export function createBackgroundList(manager: {
 
         const header = FORMAT_TEMPLATES.listHeader;
 
+        // Get all session IDs for collision-free short ID generation
+        const allSessionIds = tasks.map((t) => t.sessionID);
+
         const rows = tasks
           .map((task) => {
             const duration = formatDuration(task.startedAt, task.completedAt);
@@ -54,9 +57,8 @@ export function createBackgroundList(manager: {
             ]
               .filter(Boolean)
               .join(" ");
-            const idWithIndicators = indicators
-              ? `${shortId(task.sessionID)} ${indicators}`
-              : shortId(task.sessionID);
+            const shortId = uniqueShortId(task.sessionID, allSessionIds);
+            const idWithIndicators = indicators ? `${shortId} ${indicators}` : shortId;
             return `| \`${idWithIndicators}\` | ${desc} | ${task.agent} | ${icon} ${task.status} | ${duration} |`;
           })
           .join("\n");

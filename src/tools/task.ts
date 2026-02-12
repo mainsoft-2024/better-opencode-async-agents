@@ -1,5 +1,5 @@
 import { type ToolDefinition, tool } from "@opencode-ai/plugin";
-import { shortId } from "../helpers";
+import { uniqueShortId } from "../helpers";
 import {
   ERROR_MESSAGES,
   FORK_MESSAGES,
@@ -16,6 +16,7 @@ import { type ResumeManager, executeResume, validateResumeTask } from "./resume"
 
 interface TaskManager extends ResumeManager {
   launch(input: LaunchInput): Promise<BackgroundTask>;
+  getTaskSessionIds(): string[];
 }
 
 // =============================================================================
@@ -135,7 +136,10 @@ async function handleLaunchMode(
       parentAgent: toolContext.agent,
     });
 
-    return SUCCESS_MESSAGES.taskLaunched(shortId(task.sessionID));
+    // Get sibling IDs to generate collision-free short ID
+    const siblingIds = manager.getTaskSessionIds?.() ?? [];
+    const displayId = uniqueShortId(task.sessionID, siblingIds);
+    return SUCCESS_MESSAGES.taskLaunched(displayId);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     return ERROR_MESSAGES.launchFailed(message);

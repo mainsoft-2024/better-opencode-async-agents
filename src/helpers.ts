@@ -54,16 +54,48 @@ export function setTaskStatus(
 }
 
 /**
- * Converts a full session ID to a short display ID (GitHub-style).
+ * Converts a full session ID to a short display ID.
+ * Simple version — no collision awareness. Use for cases where
+ * you don't have access to the sibling task list.
+ *
  * Example: ses_41e080918ffeyhQtX6E4vERe4O → ses_41e08091
  */
-export function shortId(sessionId: string): string {
+export function shortId(sessionId: string, minLen = 8): string {
   if (!sessionId.startsWith("ses_")) {
-    // Fallback for non-standard IDs: just take first 12 chars
-    return sessionId.slice(0, 12);
+    // Fallback for non-standard IDs: just take first (minLen + 4) chars
+    return sessionId.slice(0, minLen + 4);
   }
   const suffix = sessionId.slice(4); // Remove "ses_"
-  return `ses_${suffix.slice(0, 8)}`;
+  return `ses_${suffix.slice(0, minLen)}`;
+}
+
+/**
+ * Converts a full session ID to a collision-free short display ID.
+ * Git-style: starts at minLen chars, extends until unique among siblings.
+ *
+ * @param sessionId - Full session ID (e.g., "ses_41e080918ffeyhQtX6E4vERe4O")
+ * @param siblingIds - Array of OTHER full session IDs to avoid collision with
+ * @param minLen - Minimum suffix length (default 8)
+ * @returns Short ID guaranteed unique among siblings
+ */
+export function uniqueShortId(sessionId: string, siblingIds: string[], minLen = 8): string {
+  if (!sessionId.startsWith("ses_")) {
+    return sessionId.slice(0, minLen + 4);
+  }
+
+  const suffix = sessionId.slice(4);
+
+  for (let len = minLen; len <= suffix.length; len++) {
+    const candidate = `ses_${suffix.slice(0, len)}`;
+    // Check if any sibling full ID also starts with this candidate
+    const hasClash = siblingIds.some(
+      (otherId) => otherId !== sessionId && otherId.startsWith(candidate)
+    );
+    if (!hasClash) return candidate;
+  }
+
+  // Fallback: return full ID (always unique)
+  return sessionId;
 }
 
 export function formatDuration(startStr: string, endStr?: string): string {
