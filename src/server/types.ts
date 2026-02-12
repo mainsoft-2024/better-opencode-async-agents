@@ -15,6 +15,7 @@ export interface StatsResponse {
   byStatus: Record<string, number>;
   byAgent: Record<string, number>;
   toolCallsByName: Record<string, number>;
+  toolCallsByAgent: Record<string, number>;
   duration: {
     avg: number; // ms
     max: number;
@@ -49,6 +50,7 @@ export interface TaskGroupResponse {
     completionRate: number; // 0-1
     totalToolCalls: number;
     toolCallsByName: Record<string, number>;
+    toolCallsByAgent: Record<string, number>;
     duration: number; // ms
   };
 }

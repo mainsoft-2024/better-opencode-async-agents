@@ -247,6 +247,13 @@ describe("StatusApiServer Integration", () => {
         grep: 2, // 2 from ses_test1
         edit: 2, // 2 from ses_test3
       });
+
+      // Check toolCallsByAgent aggregation
+      expect(body.toolCallsByAgent).toEqual({
+        explore: 5, // ses_test1 has 5 tool calls
+        plan: 3, // ses_test2 has 3 tool calls
+        programmer: 2, // ses_test3 has 2 tool calls
+      });
     });
   });
 
@@ -381,6 +388,12 @@ describe("StatusApiServer Integration", () => {
       expect(body.stats.completed).toBe(1);
       expect(body.stats.running).toBe(1);
       expect(body.stats.completionRate).toBe(0.5);
+
+      // Check toolCallsByAgent for the group (explore: 5, plan: 3)
+      expect(body.stats.toolCallsByAgent).toEqual({
+        explore: 5,
+        plan: 3,
+      });
     });
 
     test("returns 404 for unknown batch ID", async () => {

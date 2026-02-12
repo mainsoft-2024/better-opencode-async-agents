@@ -294,6 +294,70 @@ describe("handleStats", () => {
 
     expect(body.toolCallsByName).toEqual({});
   });
+
+  test("computes toolCallsByAgent aggregated across all tasks", async () => {
+    const tasks = [
+      createMockTask({
+        agent: "explore",
+        status: "completed",
+        progress: {
+          toolCalls: 10,
+          lastTools: ["read"],
+          lastUpdate: new Date().toISOString(),
+          toolCallsByName: { read: 10 },
+        },
+      }),
+      createMockTask({
+        agent: "programmer",
+        status: "running",
+        progress: {
+          toolCalls: 12,
+          lastTools: ["edit"],
+          lastUpdate: new Date().toISOString(),
+          toolCallsByName: { edit: 12 },
+        },
+      }),
+      createMockTask({
+        agent: "programmer",
+        status: "completed",
+        progress: {
+          toolCalls: 8,
+          lastTools: ["write"],
+          lastUpdate: new Date().toISOString(),
+          toolCallsByName: { write: 8 },
+        },
+      }),
+      createMockTask({
+        agent: "explore",
+        status: "running",
+        // No progress
+      }),
+    ];
+    const manager = createMockManager(tasks);
+    const request = new Request("http://localhost:5165/stats");
+
+    const response = handleStats(request, manager);
+    const body = await response.json();
+
+    expect(body.toolCallsByAgent).toEqual({
+      explore: 10,
+      programmer: 20, // 12 + 8
+    });
+  });
+
+  test("returns empty toolCallsByAgent when no tasks have tool calls", async () => {
+    const tasks = [
+      createMockTask({ agent: "explore", status: "running" }),
+      createMockTask({ agent: "plan", status: "completed" }),
+    ];
+    const manager = createMockManager(tasks);
+    const request = new Request("http://localhost:5165/stats");
+
+    const response = handleStats(request, manager);
+    const body = await response.json();
+
+    expect(body.toolCallsByAgent).toEqual({});
+  });
 });
 
 // =============================================================================
@@ -721,6 +785,54 @@ describe("handleTaskGroup", () => {
       grep: 2, // 2
       write: 5, // 5
       edit: 2, // 2
+    });
+  });
+
+  test("computes toolCallsByAgent aggregated across group tasks", async () => {
+    const tasks = [
+      createMockTask({
+        sessionID: "ses_1",
+        batchId: "batch_g1",
+        agent: "explore",
+        progress: {
+          toolCalls: 15,
+          lastTools: ["read"],
+          lastUpdate: new Date().toISOString(),
+          toolCallsByName: { read: 15 },
+        },
+      }),
+      createMockTask({
+        sessionID: "ses_2",
+        batchId: "batch_g1",
+        agent: "programmer",
+        progress: {
+          toolCalls: 12,
+          lastTools: ["edit"],
+          lastUpdate: new Date().toISOString(),
+          toolCallsByName: { edit: 12 },
+        },
+      }),
+      createMockTask({
+        sessionID: "ses_3",
+        batchId: "batch_g1",
+        agent: "programmer",
+        progress: {
+          toolCalls: 8,
+          lastTools: ["write"],
+          lastUpdate: new Date().toISOString(),
+          toolCallsByName: { write: 8 },
+        },
+      }),
+    ];
+    const manager = createMockManager(tasks);
+    const request = new Request("http://localhost:5165/groups/batch_g1");
+
+    const response = handleTaskGroup(request, manager, "batch_g1");
+    const body = await response.json();
+
+    expect(body.stats.toolCallsByAgent).toEqual({
+      explore: 15,
+      programmer: 20, // 12 + 8
     });
   });
 

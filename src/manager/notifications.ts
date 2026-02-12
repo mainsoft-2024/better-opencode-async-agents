@@ -78,8 +78,10 @@ export function showProgressToast(
       toolsStr =
         prevTools.length > 0 ? ` - ${prevTools.join(" > ")} > ｢${lastTool}｣` : ` - ｢${lastTool}｣`;
     }
+    const callCount = task.progress?.toolCalls ?? 0;
+    const callsStr = callCount > 0 ? ` [${callCount} calls]` : "";
     taskLines.push(
-      `${spinner} [${shortId(task.sessionID)}] ${task.agent}: ${task.description} (${duration})${toolsStr}`
+      `${spinner} [${shortId(task.sessionID)}] ${task.agent}: ${task.description} (${duration})${toolsStr}${callsStr}`
     );
   }
 
@@ -100,8 +102,10 @@ export function showProgressToast(
       task.completedAt ? new Date(task.completedAt) : undefined
     );
     const icon = task.status === "completed" ? "✓" : task.status === "error" ? "✗" : "⊘";
+    const callCount = task.progress?.toolCalls ?? 0;
+    const callsStr = callCount > 0 ? ` [${callCount} calls]` : "";
     taskLines.push(
-      `${icon} [${shortId(task.sessionID)}] ${task.agent}: ${task.description} (${duration})`
+      `${icon} [${shortId(task.sessionID)}] ${task.agent}: ${task.description} (${duration})${callsStr}`
     );
   }
 

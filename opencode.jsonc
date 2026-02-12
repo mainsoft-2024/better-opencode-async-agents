@@ -1,7 +1,7 @@
 {
   "$schema": "https://opencode.ai/config.json",
   // MAD Agentic System v0.8-alpha.07
-  // Generated: 2026-02-12T07:01:39.440Z
+  // Generated: 2026-02-12T08:43:27.012Z
   "model": "anthropic/claude-opus-4-6-thinking-31999",
   "small_model": "openai/gpt-5.2",
   "default_agent": "MAD - MAIN ▸▸  v0.8-alpha.07",
@@ -9,7 +9,7 @@
     "opencode-antigravity-auth@1.5.0-beta.1",
     "opencode-anthropic-auth@0.0.13",
     "@franlol/opencode-md-table-formatter@latest",
-    "better-opencode-async-agents@0.2.1",
+    "better-opencode-async-agents@0.4.0",
     "@paulp-o/opencode-auq@latest",
     "opencode-todo-reminder@latest",
     "opencode-pty@latest",

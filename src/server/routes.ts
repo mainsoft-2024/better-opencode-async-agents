@@ -43,6 +43,7 @@ export function handleStats(_req: Request, manager: RouteManager): Response {
   const byStatus: Record<string, number> = {};
   const byAgent: Record<string, number> = {};
   const toolCallsByName: Record<string, number> = {};
+  const toolCallsByAgent: Record<string, number> = {};
   const durations: number[] = [];
   let activeTasks = 0;
 
@@ -55,6 +56,12 @@ export function handleStats(_req: Request, manager: RouteManager): Response {
       for (const [toolName, count] of Object.entries(task.progress.toolCallsByName)) {
         toolCallsByName[toolName] = (toolCallsByName[toolName] ?? 0) + count;
       }
+    }
+
+    // Aggregate tool calls by agent
+    const agentToolCalls = task.progress?.toolCalls ?? 0;
+    if (agentToolCalls > 0) {
+      toolCallsByAgent[task.agent] = (toolCallsByAgent[task.agent] ?? 0) + agentToolCalls;
     }
 
     if (task.status === "running" || task.status === "resumed") {
@@ -72,6 +79,7 @@ export function handleStats(_req: Request, manager: RouteManager): Response {
     byStatus,
     byAgent,
     toolCallsByName,
+    toolCallsByAgent,
     duration: {
       avg: durations.length > 0 ? durations.reduce((a, b) => a + b, 0) / durations.length : 0,
       max: durations.length > 0 ? Math.max(...durations) : 0,
@@ -199,6 +207,7 @@ export function handleTaskGroup(req: Request, manager: RouteManager, groupId: st
   let cancelled = 0;
   let totalToolCalls = 0;
   const toolCallsByName: Record<string, number> = {};
+  const toolCallsByAgent: Record<string, number> = {};
   let minStart = Number.POSITIVE_INFINITY;
   let maxEnd = 0;
 
@@ -215,6 +224,12 @@ export function handleTaskGroup(req: Request, manager: RouteManager, groupId: st
       for (const [toolName, count] of Object.entries(t.progress.toolCallsByName)) {
         toolCallsByName[toolName] = (toolCallsByName[toolName] ?? 0) + count;
       }
+    }
+
+    // Aggregate tool calls by agent
+    const agentToolCalls = t.progress?.toolCalls ?? 0;
+    if (agentToolCalls > 0) {
+      toolCallsByAgent[t.agent] = (toolCallsByAgent[t.agent] ?? 0) + agentToolCalls;
     }
 
     if (t.startedAt) {
@@ -242,6 +257,7 @@ export function handleTaskGroup(req: Request, manager: RouteManager, groupId: st
       completionRate: total > 0 ? completed / total : 0,
       totalToolCalls,
       toolCallsByName,
+      toolCallsByAgent,
       duration,
     },
   };

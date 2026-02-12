@@ -150,6 +150,7 @@ export class StatusApiServer {
     const byStatus: Record<string, number> = {};
     const byAgent: Record<string, number> = {};
     const toolCallsByName: Record<string, number> = {};
+    const toolCallsByAgent: Record<string, number> = {};
     const durations: number[] = [];
     let activeTasks = 0;
 
@@ -164,6 +165,12 @@ export class StatusApiServer {
         }
       }
 
+      // Aggregate tool calls by agent
+      const agentToolCalls = task.progress?.toolCalls ?? 0;
+      if (agentToolCalls > 0) {
+        toolCallsByAgent[task.agent] = (toolCallsByAgent[task.agent] ?? 0) + agentToolCalls;
+      }
+
       if (task.status === "running" || task.status === "resumed") activeTasks++;
       if (task.startedAt && task.completedAt) {
         const d = new Date(task.completedAt).getTime() - new Date(task.startedAt).getTime();
@@ -175,6 +182,7 @@ export class StatusApiServer {
       byStatus,
       byAgent,
       toolCallsByName,
+      toolCallsByAgent,
       duration: {
         avg: durations.length ? durations.reduce((a, b) => a + b, 0) / durations.length : 0,
         max: durations.length ? Math.max(...durations) : 0,

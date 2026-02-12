@@ -156,3 +156,4 @@ CLAUDE.md
 test_heuristic/
 deploy.sh
 .osgrep
+opencode.jsonc
