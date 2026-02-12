@@ -1,4 +1,4 @@
-import { STORAGE_DIR, TASKS_FILE } from "./constants";
+import { SERVER_INFO_FILENAME, STORAGE_DIR, TASKS_FILE } from "./constants";
 import type { PersistedTask } from "./types";
 
 // =============================================================================
@@ -137,5 +137,136 @@ export async function deletePersistedTask(sessionID: string): Promise<void> {
   if (sessionID in tasks) {
     delete tasks[sessionID];
     await saveTasks(tasks);
+  }
+}
+
+/**
+ * Loads all persisted tasks from disk with their session IDs.
+ * Returns an array of tasks with sessionID included for API consumption.
+ */
+export async function loadAllTasks(): Promise<Array<{ sessionID: string } & PersistedTask>> {
+  const tasks = await loadTasks();
+  return Object.entries(tasks).map(([sessionID, task]) => ({ sessionID, ...task }));
+}
+
+// =============================================================================
+// Server Info (server.json) - For HTTP Status API discovery
+// =============================================================================
+
+const SERVER_INFO_FILE = `${STORAGE_DIR}/${SERVER_INFO_FILENAME}`;
+
+/**
+ * Writes server discovery info to disk.
+ * Used by the HTTP Status API server to advertise its endpoint.
+ */
+export async function writeServerInfo(info: {
+  port: number;
+  pid: number;
+  startedAt: string;
+  url: string;
+  version: string;
+}): Promise<void> {
+  try {
+    await ensureStorageDir();
+    const content = JSON.stringify(info, null, 2);
+
+    // Try Bun first (faster, atomic)
+    if (hasBun()) {
+      await Bun.write(SERVER_INFO_FILE, content);
+      return;
+    }
+
+    // Fall back to Node.js fs
+    const fs = await getFs();
+    if (fs) {
+      await fs.writeFile(SERVER_INFO_FILE, content, "utf-8");
+      return;
+    }
+
+    console.warn("[storage] No file system API available for writing server info");
+  } catch (error) {
+    console.warn(`[storage] Failed to write server info: ${error}`);
+    throw error;
+  }
+}
+
+/**
+ * Reads server discovery info from disk.
+ * Returns null if the file doesn't exist.
+ */
+export async function readServerInfo(): Promise<{
+  port: number;
+  pid: number;
+  startedAt: string;
+  url: string;
+  version: string;
+} | null> {
+  try {
+    // Try Bun first
+    if (hasBun()) {
+      const file = Bun.file(SERVER_INFO_FILE);
+      const exists = await file.exists();
+      if (!exists) {
+        return null;
+      }
+      const content = await file.text();
+      return JSON.parse(content) as {
+        port: number;
+        pid: number;
+        startedAt: string;
+        url: string;
+        version: string;
+      };
+    }
+
+    // Fall back to Node.js fs
+    const fs = await getFs();
+    if (fs) {
+      const content = await fs.readFile(SERVER_INFO_FILE, "utf-8");
+      return JSON.parse(content) as {
+        port: number;
+        pid: number;
+        startedAt: string;
+        url: string;
+        version: string;
+      };
+    }
+
+    return null;
+  } catch (error) {
+    const code = (error as NodeJS.ErrnoException).code;
+    if (code !== "ENOENT") {
+      console.warn(`[storage] Failed to read server info: ${error}`);
+    }
+    return null;
+  }
+}
+
+/**
+ * Deletes the server discovery info file.
+ * Called when the HTTP Status API server shuts down.
+ */
+export async function deleteServerInfo(): Promise<void> {
+  try {
+    // Try Bun first
+    if (hasBun()) {
+      const file = Bun.file(SERVER_INFO_FILE);
+      const exists = await file.exists();
+      if (exists) {
+        await file.delete();
+      }
+      return;
+    }
+
+    // Fall back to Node.js fs
+    const fs = await getFs();
+    if (fs) {
+      await fs.unlink(SERVER_INFO_FILE).catch(() => {
+        // Ignore if file doesn't exist
+      });
+      return;
+    }
+  } catch {
+    // Ignore deletion errors
   }
 }

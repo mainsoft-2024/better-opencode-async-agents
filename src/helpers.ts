@@ -11,6 +11,7 @@ import type { BackgroundTask, BackgroundTaskStatus } from "./types";
  * - Sets task.completedAt for terminal statuses
  * - Optionally sets task.error
  * - Auto-persists if persistFn is provided
+ * - Emits events if emitFn is provided
  */
 export function setTaskStatus(
   task: BackgroundTask,
@@ -18,8 +19,13 @@ export function setTaskStatus(
   options?: {
     error?: string;
     persistFn?: (task: BackgroundTask) => void;
+    emitFn?: (
+      eventType: "task.completed" | "task.error" | "task.cancelled",
+      task: BackgroundTask
+    ) => void;
   }
 ): void {
+  const previousStatus = task.status;
   task.status = status;
 
   // Set completedAt for terminal statuses
@@ -34,6 +40,17 @@ export function setTaskStatus(
 
   // Auto-persist if function provided
   options?.persistFn?.(task);
+
+  // Emit event if function provided and status changed to a terminal state
+  if (options?.emitFn && previousStatus !== status) {
+    if (status === "completed") {
+      options.emitFn("task.completed", task);
+    } else if (status === "error") {
+      options.emitFn("task.error", task);
+    } else if (status === "cancelled") {
+      options.emitFn("task.cancelled", task);
+    }
+  }
 }
 
 /**

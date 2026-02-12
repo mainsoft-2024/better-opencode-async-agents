@@ -50,9 +50,14 @@ export function handleEvent(
     getTasksArray: () => BackgroundTask[];
     notifyParentSession: (task: BackgroundTask) => void;
     persistTask: (task: BackgroundTask) => void;
+    emitTaskEvent?: (
+      eventType: "task.completed" | "task.error" | "task.cancelled",
+      task: BackgroundTask
+    ) => void;
   }
 ): void {
-  const { clearAllTasks, getTasksArray, notifyParentSession, persistTask } = callbacks;
+  const { clearAllTasks, getTasksArray, notifyParentSession, persistTask, emitTaskEvent } =
+    callbacks;
   const props = event.properties;
 
   // Debug: log all events to understand what's being received
@@ -100,6 +105,7 @@ export function handleEvent(
       setTaskStatus(task, "cancelled", {
         error: "Session deleted",
         persistFn: persistTask,
+        emitFn: emitTaskEvent,
       });
     }
     return;
@@ -123,7 +129,7 @@ export function handleEvent(
     // Only handle running tasks (not resumed)
     if (task.status !== "running") return;
 
-    setTaskStatus(task, "completed", { persistFn: persistTask });
+    setTaskStatus(task, "completed", { persistFn: persistTask, emitFn: emitTaskEvent });
     // Trigger notification immediately on event-based completion
     notifyParentSession(task);
   }

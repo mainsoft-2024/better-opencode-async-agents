@@ -24,6 +24,13 @@ export interface PersistedTask {
   status: BackgroundTaskStatus;
   resumeCount?: number;
   isForked?: boolean;
+  // Extended fields for HTTP Status API
+  completedAt?: string;
+  error?: string;
+  result?: string;
+  progress?: TaskProgress;
+  startedAt?: string;
+  batchId?: string;
 }
 
 /**

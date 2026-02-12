@@ -65,7 +65,11 @@ export async function pollRunningTasks(
   ) => Promise<
     Array<{ info?: { role?: string }; parts?: Array<{ type?: string; text?: string }> }>
   >,
-  persistTask?: (task: BackgroundTask) => void
+  persistTask?: (task: BackgroundTask) => void,
+  emitTaskEvent?: (
+    eventType: "task.completed" | "task.error" | "task.cancelled",
+    task: BackgroundTask
+  ) => void
 ): Promise<void> {
   try {
     const statusResult = await client.session.status();
@@ -125,7 +129,7 @@ export async function pollRunningTasks(
             );
 
             if (hasAssistantResponse) {
-              setTaskStatus(task, "completed", { persistFn: persistTask });
+              setTaskStatus(task, "completed", { persistFn: persistTask, emitFn: emitTaskEvent });
               notifyParentSession(task);
               continue;
             }
@@ -138,7 +142,7 @@ export async function pollRunningTasks(
       }
 
       if (sessionStatus.type === "idle") {
-        setTaskStatus(task, "completed", { persistFn: persistTask });
+        setTaskStatus(task, "completed", { persistFn: persistTask, emitFn: emitTaskEvent });
         notifyParentSession(task);
         continue;
       }

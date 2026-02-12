@@ -2,7 +2,13 @@ import type { PluginInput } from "@opencode-ai/plugin";
 import { setTaskStatus } from "../helpers";
 import { SUCCESS_MESSAGES } from "../prompts";
 import { getPersistedTask, loadTasks, saveTask } from "../storage";
-import type { BackgroundTask, LaunchInput, OpencodeClient, PersistedTask } from "../types";
+import type {
+  BackgroundTask,
+  LaunchInput,
+  OpencodeClient,
+  PersistedTask,
+  TaskProgress,
+} from "../types";
 import { handleEvent, startEventSubscription } from "./events";
 import {
   notifyParentSession,
@@ -20,6 +26,18 @@ import {
   launchTask,
 } from "./task-lifecycle";
 
+// =============================================================================
+// Task Event Types (for HTTP Status API SSE)
+// =============================================================================
+
+export type TaskEventType =
+  | "task.created"
+  | "task.updated"
+  | "task.completed"
+  | "task.error"
+  | "task.cancelled";
+export type TaskEventCallback = (eventType: TaskEventType, task: BackgroundTask) => void;
+
 /**
  * BackgroundManager class for managing background agent tasks.
  *
@@ -34,6 +52,7 @@ export class BackgroundManager {
   private currentBatchId: string | null = null;
   private tasks: Map<string, BackgroundTask> = new Map();
   private originalParentSessionID: string | null = null;
+  private taskEventListeners: TaskEventCallback[] = [];
 
   constructor(ctx: PluginInput) {
     this.client = ctx.client;
@@ -41,6 +60,33 @@ export class BackgroundManager {
     this.startEventSubscription();
     // Load persisted tasks asynchronously (fire and forget on startup)
     this.loadPersistedTasks();
+  }
+
+  /**
+   * Registers a callback for task lifecycle events.
+   * Returns an unsubscribe function.
+   */
+  onTaskEvent(callback: TaskEventCallback): () => void {
+    this.taskEventListeners.push(callback);
+    return () => {
+      const index = this.taskEventListeners.indexOf(callback);
+      if (index > -1) {
+        this.taskEventListeners.splice(index, 1);
+      }
+    };
+  }
+
+  /**
+   * Emits a task event to all registered listeners.
+   */
+  private emitTaskEvent(eventType: TaskEventType, task: BackgroundTask): void {
+    for (const listener of this.taskEventListeners) {
+      try {
+        listener(eventType, task);
+      } catch {
+        // Ignore listener errors
+      }
+    }
   }
 
   /**
@@ -75,11 +121,13 @@ export class BackgroundManager {
         this.originalParentSessionID = sessionID;
       },
       () => this.startPolling(),
-      (t) => this.notifyParentSession(t)
+      (t) => this.notifyParentSession(t),
+      (eventType, t) => this.emitTaskEvent(eventType, t),
+      (t) => this.persistTask(t) // Persist callback for immediate disk write
     );
 
-    // Persist task to disk
-    await this.persistTask(task);
+    // Emit task created event for HTTP API
+    this.emitTaskEvent("task.created", task);
 
     return task;
   }
@@ -97,6 +145,13 @@ export class BackgroundManager {
       status: task.status,
       resumeCount: task.resumeCount,
       isForked: task.isForked,
+      // Extended fields for HTTP Status API
+      completedAt: task.completedAt,
+      error: task.error,
+      result: task.result,
+      progress: task.progress,
+      startedAt: task.startedAt,
+      batchId: task.batchId,
     };
     try {
       await saveTask(task.sessionID, persisted);
@@ -107,7 +162,12 @@ export class BackgroundManager {
   }
 
   async cancelTask(taskId: string): Promise<void> {
-    return cancelTask(taskId, this.tasks, this.client);
+    const task = this.tasks.get(taskId);
+    await cancelTask(taskId, this.tasks, this.client);
+    // Emit cancelled event if task was found and cancelled
+    if (task) {
+      this.emitTaskEvent("task.cancelled", task);
+    }
   }
 
   /**
@@ -293,7 +353,8 @@ export class BackgroundManager {
       this.client,
       (t) => this.notifyParentSession(t),
       skipNotification,
-      (sessionID) => this.getTaskMessages(sessionID)
+      (sessionID) => this.getTaskMessages(sessionID),
+      (eventType, t) => this.emitTaskEvent(eventType, t)
     );
 
     // Persist status change to disk
@@ -548,20 +609,35 @@ export class BackgroundManager {
       this.client,
       this.tasks,
       this.originalParentSessionID,
-      (task) => updateTaskProgress(task, this.client),
+      (task) => this.updateTaskProgressWithEvent(task),
       (task) => this.notifyParentSession(task),
       () => this.clearAllTasks(),
       () => this.stopPolling(),
       (tasks) => this.showProgressToast(tasks),
       () => this.getAllTasks(),
       (sessionID) => this.getTaskMessages(sessionID),
-      (task) => void this.persistTask(task)
+      (task) => void this.persistTask(task),
+      (eventType, task) => this.emitTaskEvent(eventType, task)
     );
   }
 
   private showProgressToast(tasks: BackgroundTask[]): void {
     showProgressToast(tasks, this.animationFrame, this.client, () => this.getAllTasks());
     this.animationFrame = (this.animationFrame + 1) % 10;
+  }
+
+  /**
+   * Updates task progress and emits task.updated event if progress changed.
+   */
+  private async updateTaskProgressWithEvent(task: BackgroundTask): Promise<void> {
+    const previousToolCalls = task.progress?.toolCalls ?? 0;
+    await updateTaskProgress(task, this.client);
+    const currentToolCalls = task.progress?.toolCalls ?? 0;
+
+    // Emit task.updated only if progress actually changed (tool calls increased)
+    if (currentToolCalls > previousToolCalls) {
+      this.emitTaskEvent("task.updated", task);
+    }
   }
 
   private notifyParentSession(task: BackgroundTask): void {
@@ -575,6 +651,7 @@ export class BackgroundManager {
         getTasksArray: () => this.getAllTasks(),
         notifyParentSession: (task) => this.notifyParentSession(task),
         persistTask: (task) => void this.persistTask(task),
+        emitTaskEvent: (eventType, task) => this.emitTaskEvent(eventType, task),
       })
     );
   }

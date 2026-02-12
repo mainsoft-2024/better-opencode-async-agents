@@ -16,7 +16,9 @@ export async function launchTask(
   getOrCreateBatchId: () => string,
   setOriginalParentSessionID: (sessionID: string | null) => void,
   startPolling: () => void,
-  notifyParentSession: (task: BackgroundTask) => void
+  notifyParentSession: (task: BackgroundTask) => void,
+  emitTaskEvent?: (eventType: "task.error", task: BackgroundTask) => void,
+  persistTask?: (task: BackgroundTask) => Promise<void>
 ): Promise<BackgroundTask> {
   if (!input.agent || input.agent.trim() === "") {
     throw new Error("Agent parameter is required");
@@ -124,6 +126,13 @@ export async function launchTask(
   setOriginalParentSessionID(input.parentSessionID);
 
   tasks.set(task.sessionID, task);
+
+  // Persist task to disk immediately to ensure it's available
+  // even if the plugin is re-instantiated (Linux-specific issue)
+  if (persistTask) {
+    await persistTask(task);
+  }
+
   startPolling();
 
   client.session
@@ -152,6 +161,7 @@ export async function launchTask(
           existingTask.error = errorMessage;
         }
         existingTask.completedAt = new Date().toISOString();
+        emitTaskEvent?.("task.error", existingTask);
         notifyParentSession(existingTask);
       }
     });
@@ -232,7 +242,13 @@ export async function checkAndUpdateTaskStatus(
   skipNotification = false,
   getTaskMessages?: (
     sessionID: string
-  ) => Promise<Array<{ info?: { role?: string }; parts?: Array<{ type?: string; text?: string }> }>>
+  ) => Promise<
+    Array<{ info?: { role?: string }; parts?: Array<{ type?: string; text?: string }> }>
+  >,
+  emitTaskEvent?: (
+    eventType: "task.completed" | "task.error" | "task.cancelled",
+    task: BackgroundTask
+  ) => void
 ): Promise<BackgroundTask> {
   if (task.status !== "running") {
     return task;
@@ -246,6 +262,7 @@ export async function checkAndUpdateTaskStatus(
     if (sessionStatus?.type === "idle") {
       task.status = "completed";
       task.completedAt = new Date().toISOString();
+      emitTaskEvent?.("task.completed", task);
       if (!skipNotification) {
         notifyParentSession(task);
       }
@@ -266,6 +283,7 @@ export async function checkAndUpdateTaskStatus(
         if (hasAssistantResponse) {
           task.status = "completed";
           task.completedAt = new Date().toISOString();
+          emitTaskEvent?.("task.completed", task);
           if (!skipNotification) {
             notifyParentSession(task);
           }

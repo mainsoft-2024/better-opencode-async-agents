@@ -5,12 +5,12 @@ import type { BackgroundTask } from "../types";
 
 /**
  * Creates the background_cancel tool for cancelling running tasks
- * @param manager - BackgroundManager instance with getTask(), cancelTask(), resolveTaskId() methods
+ * @param manager - BackgroundManager instance with getTaskWithFallback(), cancelTask(), resolveTaskIdWithFallback() methods
  * @returns Tool definition for background_cancel
  */
 export function createBackgroundCancel(manager: {
-  getTask(taskId: string): BackgroundTask | undefined;
-  resolveTaskId(idOrPrefix: string): string | null;
+  getTaskWithFallback(id: string): Promise<BackgroundTask | undefined>;
+  resolveTaskIdWithFallback(idOrPrefix: string): Promise<string | null>;
   cancelTask(taskId: string): Promise<void>;
 }): ToolDefinition {
   return tool({
@@ -21,13 +21,14 @@ export function createBackgroundCancel(manager: {
     },
     async execute(args: { task_id: string }) {
       try {
-        // Resolve short ID or prefix to full ID
-        const resolvedId = manager.resolveTaskId(args.task_id);
+        // Resolve short ID or prefix to full ID (checks disk if not in memory)
+        const resolvedId = await manager.resolveTaskIdWithFallback(args.task_id);
         if (!resolvedId) {
           return ERROR_MESSAGES.taskNotFound(args.task_id);
         }
 
-        const task = manager.getTask(resolvedId);
+        // Get task from memory or disk
+        const task = await manager.getTaskWithFallback(resolvedId);
         if (!task) {
           return ERROR_MESSAGES.taskNotFound(args.task_id);
         }

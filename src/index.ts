@@ -1,5 +1,6 @@
 import type { Hooks, PluginInput } from "@opencode-ai/plugin";
 import { BackgroundManager } from "./manager";
+import { StatusApiServer } from "./server";
 import {
   createBackgroundCancel,
   createBackgroundClear,
@@ -21,6 +22,17 @@ export type { BackgroundTask, BackgroundTaskStatus, TaskProgress, LaunchInput } 
  */
 export default async function plugin(ctx: PluginInput): Promise<Hooks> {
   const manager = new BackgroundManager(ctx);
+
+  // Start HTTP Status API server
+  const server = await StatusApiServer.start(manager);
+  if (server) {
+    const cleanup = () => {
+      server.stop();
+    };
+    process.on("SIGINT", cleanup);
+    process.on("SIGTERM", cleanup);
+    process.on("exit", cleanup);
+  }
 
   return {
     tool: {

@@ -74,8 +74,8 @@ describe("tool factories", () => {
   describe("createBackgroundCancel", () => {
     test("creates a tool with correct description", () => {
       const mockManager = {
-        getTask: mock(() => undefined),
-        resolveTaskId: mock(() => null),
+        getTaskWithFallback: mock(() => Promise.resolve(undefined)),
+        resolveTaskIdWithFallback: mock(() => Promise.resolve(null)),
         cancelTask: mock(() => Promise.resolve()),
       };
       const tool = createBackgroundCancel(mockManager);
@@ -85,8 +85,8 @@ describe("tool factories", () => {
 
     test("returns error when task not found", async () => {
       const mockManager = {
-        getTask: mock(() => undefined),
-        resolveTaskId: mock(() => null),
+        getTaskWithFallback: mock(() => Promise.resolve(undefined)),
+        resolveTaskIdWithFallback: mock(() => Promise.resolve(null)),
         cancelTask: mock(() => Promise.resolve()),
       };
       const tool = createBackgroundCancel(mockManager);

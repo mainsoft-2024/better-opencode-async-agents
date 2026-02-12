@@ -10,12 +10,13 @@ const MAX_TIMEOUT_SECONDS = 600;
 
 /**
  * Creates the background_output tool for retrieving task status and results
- * @param manager - BackgroundManager instance with getTask(), checkAndUpdateTaskStatus(), waitForTask(), resolveTaskId() methods
+ * @param manager - BackgroundManager instance with getTask(), checkAndUpdateTaskStatus(), waitForTask(), resolveTaskIdWithFallback() methods
  * @returns Tool definition for background_output
  */
 export function createBackgroundOutput(manager: {
   getTask(taskId: string): BackgroundTask | undefined;
-  resolveTaskId(idOrPrefix: string): string | null;
+  resolveTaskIdWithFallback(idOrPrefix: string): Promise<string | null>;
+  getTaskWithFallback(id: string): Promise<BackgroundTask | undefined>;
   checkAndUpdateTaskStatus(
     task: BackgroundTask,
     skipNotification?: boolean
@@ -33,13 +34,14 @@ export function createBackgroundOutput(manager: {
     },
     async execute(args: { task_id: string; block?: boolean; timeout?: number }) {
       try {
-        // Resolve short ID or prefix to full ID
-        const resolvedId = manager.resolveTaskId(args.task_id);
+        // Resolve short ID or prefix to full ID (checks disk if not in memory)
+        const resolvedId = await manager.resolveTaskIdWithFallback(args.task_id);
         if (!resolvedId) {
           return ERROR_MESSAGES.taskNotFound(args.task_id);
         }
 
-        let task = manager.getTask(resolvedId);
+        // Get task from memory or disk
+        let task = manager.getTask(resolvedId) ?? (await manager.getTaskWithFallback(resolvedId));
         if (!task) {
           return ERROR_MESSAGES.taskNotFound(args.task_id);
         }
