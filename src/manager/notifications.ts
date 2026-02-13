@@ -161,7 +161,7 @@ export function showProgressToast(
     toolBreakdown =
       remaining > 0 ? ` (${top3} +${remaining} more)` : ` (${top3})`;
   }
-  const summary = `[${progressBar}] ${finishedCount}/${totalTasks} agents (${progressPercent}%) | ${totalToolCalls} calls${toolBreakdown}`;
+  const summary = `[${progressBar}] ${finishedCount}/${totalTasks} agents (${progressPercent}%) | 🔧${totalToolCalls}${toolBreakdown}`;
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const tuiClient = client as any;
