@@ -97,7 +97,7 @@ export function showProgressToast(
           : ` - ｢${lastTool}｣`;
     }
     const callCount = task.progress?.toolCalls ?? 0;
-    const callsStr = callCount > 0 ? ` [🔧 ${callCount}]` : "";
+    const callsStr = callCount > 0 ? ` 🔧${callCount}` : "";
     taskLines.push(
       `${spinner} [${shortId(task.sessionID)}] ${task.agent}: ${task.description} (${duration})${toolsStr}${callsStr}`,
     );
