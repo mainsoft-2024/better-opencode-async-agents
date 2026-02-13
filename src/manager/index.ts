@@ -14,6 +14,7 @@ import {
   notifyParentSession,
   notifyResumeComplete,
   notifyResumeError,
+  resetNotificationState,
   showProgressToast,
 } from "./notifications";
 import { pollRunningTasks, startPolling, stopPolling, updateTaskProgress } from "./polling";
@@ -452,6 +453,9 @@ export class BackgroundManager {
     message: string,
     timeoutMs: number
   ): Promise<string> {
+    // Reset notification state for resumed task
+    resetNotificationState(task.sessionID);
+
     // Get initial message count to detect new responses
     const initialMessages = await this.getTaskMessages(task.sessionID);
     const initialAssistantCount = initialMessages.filter(
@@ -509,6 +513,9 @@ export class BackgroundManager {
     message: string,
     toolContext: { sessionID: string; messageID: string; agent: string }
   ): Promise<void> {
+    // Reset notification state so the resumed task can send a new completion notification
+    resetNotificationState(task.sessionID);
+
     // Get initial message count to detect new responses
     const initialMessages = await this.getTaskMessages(task.sessionID);
     const initialAssistantCount = initialMessages.filter(

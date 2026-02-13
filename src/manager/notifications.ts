@@ -9,6 +9,25 @@ import {
 import type { BackgroundTask, OpencodeClient } from "../types";
 
 // =============================================================================
+// Notification Deduplication State
+// =============================================================================
+
+type NotifyKind = "completed" | "error" | "cancelled";
+const NOTIFY_PRIORITY: Record<NotifyKind, number> = {
+  completed: 1,
+  cancelled: 2,
+  error: 3,
+};
+
+interface NotifyState {
+  scheduledKind?: NotifyKind;
+  sentKind?: NotifyKind;
+  timer?: ReturnType<typeof setTimeout>;
+}
+
+const notifyStateMap = new Map<string, NotifyState>();
+
+// =============================================================================
 // Notification Functions
 // =============================================================================
 
@@ -19,19 +38,14 @@ export function showProgressToast(
   allTasks: BackgroundTask[],
   animationFrame: number,
   client: OpencodeClient,
-  getTasksArray: () => BackgroundTask[],
+  getTasksArray: () => BackgroundTask[]
 ): void {
   if (allTasks.length === 0) return;
 
   const now = Date.now();
-  const runningTasks = allTasks.filter(
-    (t) => t.status === "running" || t.status === "resumed",
-  );
+  const runningTasks = allTasks.filter((t) => t.status === "running" || t.status === "resumed");
   const completedTasks = allTasks.filter(
-    (t) =>
-      t.status === "completed" ||
-      t.status === "error" ||
-      t.status === "cancelled",
+    (t) => t.status === "completed" || t.status === "error" || t.status === "cancelled"
   );
 
   const recentlyCompletedTasks =
@@ -49,34 +63,23 @@ export function showProgressToast(
   const firstActive = activeTasks[0];
   if (!firstActive) return;
   const activeBatchId = firstActive.batchId;
-  const batchTasks = allTasks.filter(
-    (t) => t.batchId === (activeBatchId ?? ""),
-  );
+  const batchTasks = allTasks.filter((t) => t.batchId === (activeBatchId ?? ""));
   const totalTasks = batchTasks.length;
   const finishedCount = batchTasks.filter(
-    (t) =>
-      t.status === "completed" ||
-      t.status === "error" ||
-      t.status === "cancelled",
+    (t) => t.status === "completed" || t.status === "error" || t.status === "cancelled"
   ).length;
 
   const nextAnimationFrame = (animationFrame + 1) % SPINNER_FRAMES.length;
   const spinner = SPINNER_FRAMES[nextAnimationFrame];
 
-  const totalToolCalls = batchTasks.reduce(
-    (sum, t) => sum + (t.progress?.toolCalls ?? 0),
-    0,
-  );
+  const totalToolCalls = batchTasks.reduce((sum, t) => sum + (t.progress?.toolCalls ?? 0), 0);
 
   // Aggregate tool calls by name across batch tasks
   const aggregatedToolCalls: Record<string, number> = {};
   for (const t of batchTasks) {
     if (t.progress?.toolCallsByName) {
-      for (const [toolName, count] of Object.entries(
-        t.progress.toolCallsByName,
-      )) {
-        aggregatedToolCalls[toolName] =
-          (aggregatedToolCalls[toolName] ?? 0) + count;
+      for (const [toolName, count] of Object.entries(t.progress.toolCallsByName)) {
+        aggregatedToolCalls[toolName] = (aggregatedToolCalls[toolName] ?? 0) + count;
       }
     }
   }
@@ -92,24 +95,17 @@ export function showProgressToast(
       const lastTool = tools[tools.length - 1];
       const prevTools = tools.slice(0, -1);
       toolsStr =
-        prevTools.length > 0
-          ? ` - ${prevTools.join(" > ")} > ｢${lastTool}｣`
-          : ` - ｢${lastTool}｣`;
+        prevTools.length > 0 ? ` - ${prevTools.join(" > ")} > ｢${lastTool}｣` : ` - ｢${lastTool}｣`;
     }
     const callCount = task.progress?.toolCalls ?? 0;
     const callsStr = callCount > 0 ? ` 🔧${callCount}` : "";
     taskLines.push(
-      `${spinner} [${shortId(task.sessionID)}] ${task.agent}: ${task.description} (${duration})${toolsStr}${callsStr}`,
+      `${spinner} [${shortId(task.sessionID)}] ${task.agent}: ${task.description} (${duration})${toolsStr}${callsStr}`
     );
   }
 
   const batchCompleted = batchTasks
-    .filter(
-      (t) =>
-        t.status === "completed" ||
-        t.status === "error" ||
-        t.status === "cancelled",
-    )
+    .filter((t) => t.status === "completed" || t.status === "error" || t.status === "cancelled")
     .sort((a, b) => {
       const aTime = a.completedAt ? new Date(a.completedAt).getTime() : 0;
       const bTime = b.completedAt ? new Date(b.completedAt).getTime() : 0;
@@ -122,14 +118,13 @@ export function showProgressToast(
   for (const task of visibleCompleted) {
     const duration = formatDuration(
       new Date(task.startedAt),
-      task.completedAt ? new Date(task.completedAt) : undefined,
+      task.completedAt ? new Date(task.completedAt) : undefined
     );
-    const icon =
-      task.status === "completed" ? "✓" : task.status === "error" ? "✗" : "⊘";
+    const icon = task.status === "completed" ? "✓" : task.status === "error" ? "✗" : "⊘";
     const callCount = task.progress?.toolCalls ?? 0;
     const callsStr = callCount > 0 ? ` 🔧${callCount}` : "";
     taskLines.push(
-      `${icon} [${shortId(task.sessionID)}] ${task.agent}: ${task.description} (${duration})${callsStr}`,
+      `${icon} [${shortId(task.sessionID)}] ${task.agent}: ${task.description} (${duration})${callsStr}`
     );
   }
 
@@ -138,19 +133,13 @@ export function showProgressToast(
     taskLines.push(PLACEHOLDER_TEXT.andMoreFinished(hiddenCount));
   }
 
-  const progressPercent =
-    totalTasks > 0 ? Math.round((finishedCount / totalTasks) * 100) : 0;
+  const progressPercent = totalTasks > 0 ? Math.round((finishedCount / totalTasks) * 100) : 0;
   const barLength = 10;
-  const filledLength = Math.round(
-    (finishedCount / Math.max(totalTasks, 1)) * barLength,
-  );
-  const progressBar =
-    "█".repeat(filledLength) + "░".repeat(barLength - filledLength);
+  const filledLength = Math.round((finishedCount / Math.max(totalTasks, 1)) * barLength);
+  const progressBar = "█".repeat(filledLength) + "░".repeat(barLength - filledLength);
 
   // Build per-tool breakdown string
-  const sortedTools = Object.entries(aggregatedToolCalls).sort(
-    ([, a], [, b]) => b - a,
-  );
+  const sortedTools = Object.entries(aggregatedToolCalls).sort(([, a], [, b]) => b - a);
   let toolBreakdown = "";
   if (sortedTools.length > 0) {
     const top3 = sortedTools
@@ -158,8 +147,7 @@ export function showProgressToast(
       .map(([name, count]) => `${name}:${count}`)
       .join(" ");
     const remaining = sortedTools.length - 3;
-    toolBreakdown =
-      remaining > 0 ? ` (${top3} +${remaining} more)` : ` (${top3})`;
+    toolBreakdown = remaining > 0 ? ` (${top3} +${remaining} more)` : ` (${top3})`;
   }
   const summary = `[${progressBar}] ${finishedCount}/${totalTasks} agents (${progressPercent}%) | 🔧${totalToolCalls}${toolBreakdown}`;
 
@@ -168,8 +156,7 @@ export function showProgressToast(
 
   if (!tuiClient.tui?.showToast) return;
 
-  const hasRunning =
-    runningTasks.filter((t) => t.batchId === activeBatchId).length > 0;
+  const hasRunning = runningTasks.filter((t) => t.batchId === activeBatchId).length > 0;
   const title = hasRunning
     ? TOAST_TITLES.backgroundTasksRunning(spinner ?? "⏳")
     : TOAST_TITLES.tasksComplete;
@@ -194,27 +181,53 @@ export function notifyParentSession(
   task: BackgroundTask,
   client: OpencodeClient,
   directory: string,
-  getTasksArray: () => BackgroundTask[],
+  getTasksArray: () => BackgroundTask[]
 ): void {
+  // --- DEDUPLICATION GUARD START ---
+  const kind: NotifyKind =
+    task.status === "error" ? "error" : task.status === "cancelled" ? "cancelled" : "completed";
+
+  const state = notifyStateMap.get(task.sessionID) ?? {};
+
+  // Already sent this kind → skip entirely
+  if (state.sentKind === kind) return;
+
+  // Already sent a higher-priority kind → skip
+  if (state.sentKind && NOTIFY_PRIORITY[state.sentKind] >= NOTIFY_PRIORITY[kind]) return;
+
+  // Already scheduled this kind → skip (timer will fire)
+  if (state.scheduledKind === kind) return;
+
+  // Higher priority incoming: cancel existing scheduled timer
+  if (
+    state.timer &&
+    state.scheduledKind &&
+    NOTIFY_PRIORITY[kind] > NOTIFY_PRIORITY[state.scheduledKind]
+  ) {
+    clearTimeout(state.timer);
+    state.timer = undefined;
+    state.scheduledKind = undefined;
+  }
+
+  // If something of equal or lower priority is already scheduled, skip
+  if (state.scheduledKind && NOTIFY_PRIORITY[state.scheduledKind] >= NOTIFY_PRIORITY[kind]) return;
+
+  state.scheduledKind = kind;
+  notifyStateMap.set(task.sessionID, state);
+  // --- DEDUPLICATION GUARD END ---
+
   const duration = formatDuration(
     new Date(task.startedAt),
-    task.completedAt ? new Date(task.completedAt) : undefined,
+    task.completedAt ? new Date(task.completedAt) : undefined
   );
   const statusText =
-    task.status === "completed"
-      ? "COMPLETED"
-      : task.status === "error"
-        ? "FAILED"
-        : "CANCELLED";
+    task.status === "completed" ? "COMPLETED" : task.status === "error" ? "FAILED" : "CANCELLED";
 
   // Calculate batch progress
   const batchTasks = getTasksArray().filter((t) => t.batchId === task.batchId);
   const totalTasks = batchTasks.length;
   const completedTasks = batchTasks.filter(
-    (t) =>
-      t.status === "completed" ||
-      t.status === "error" ||
-      t.status === "cancelled",
+    (t) => t.status === "completed" || t.status === "error" || t.status === "cancelled"
   ).length;
   const runningTasks = batchTasks.filter((t) => t.status === "running").length;
 
@@ -245,35 +258,29 @@ export function notifyParentSession(
       ? NOTIFICATION_MESSAGES.visibleTaskCompleted(task.description, duration)
       : task.status === "error"
         ? NOTIFICATION_MESSAGES.visibleTaskFailed(task.description, duration)
-        : NOTIFICATION_MESSAGES.visibleTaskCancelled(
-            task.description,
-            duration,
-          );
-  const progressLine = NOTIFICATION_MESSAGES.taskProgressLine(
-    completedTasks,
-    totalTasks,
-  );
+        : NOTIFICATION_MESSAGES.visibleTaskCancelled(task.description, duration);
+  const progressLine = NOTIFICATION_MESSAGES.taskProgressLine(completedTasks, totalTasks);
   const devIndicator =
-    process.env.SUPERAGENTS_DEBUG === "1"
-      ? ` ${NOTIFICATION_MESSAGES.devHintIndicator}`
-      : "";
+    process.env.SUPERAGENTS_DEBUG === "1" ? ` ${NOTIFICATION_MESSAGES.devHintIndicator}` : "";
   const visibleMessage = `${visibleStatus}\n${progressLine}${devIndicator}`;
 
   // Build hidden hint based on batch status
   const taskShortId = shortId(task.sessionID);
   let hiddenHint: string;
   if (task.status === "error") {
-    hiddenHint = SYSTEM_HINT_MESSAGES.errorHint(
-      taskShortId,
-      task.error || "Unknown error",
-    );
+    hiddenHint = SYSTEM_HINT_MESSAGES.errorHint(taskShortId, task.error || "Unknown error");
   } else if (runningTasks > 0) {
     hiddenHint = SYSTEM_HINT_MESSAGES.runningTasksHint(taskShortId);
   } else {
     hiddenHint = SYSTEM_HINT_MESSAGES.allTasksDoneHint(totalTasks);
   }
 
-  setTimeout(async () => {
+  const timer = setTimeout(async () => {
+    // Mark as sent BEFORE the async call to prevent races
+    state.sentKind = kind;
+    state.timer = undefined;
+    state.scheduledKind = undefined;
+
     try {
       const sessionInfo = await client.session.get({
         path: { id: task.parentSessionID },
@@ -296,7 +303,26 @@ export function notifyParentSession(
     } catch {
       // Ignore notification errors
     }
+
+    // Clean up state after a delay (allow for resume resets)
+    setTimeout(() => {
+      notifyStateMap.delete(task.sessionID);
+    }, 5000);
   }, 200);
+
+  state.timer = timer;
+}
+
+/**
+ * Resets the notification deduplication state for a task.
+ * Call this when a task re-enters "running" state (e.g., resume).
+ */
+export function resetNotificationState(taskSessionID: string): void {
+  const state = notifyStateMap.get(taskSessionID);
+  if (state?.timer) {
+    clearTimeout(state.timer);
+  }
+  notifyStateMap.delete(taskSessionID);
 }
 
 /**
@@ -313,13 +339,13 @@ export async function notifyResumeComplete(
       parts?: Array<{ type?: string; text?: string }>;
     }>
   >,
-  getTasksArray?: () => BackgroundTask[],
+  getTasksArray?: () => BackgroundTask[]
 ): Promise<void> {
   try {
     // Calculate duration
     const duration = formatDuration(
       new Date(task.startedAt),
-      task.completedAt ? new Date(task.completedAt) : undefined,
+      task.completedAt ? new Date(task.completedAt) : undefined
     );
 
     // Calculate batch progress if available
@@ -327,32 +353,19 @@ export async function notifyResumeComplete(
     let totalTasks = 1;
     let runningTasks = 0;
     if (getTasksArray) {
-      const batchTasks = getTasksArray().filter(
-        (t) => t.batchId === task.batchId,
-      );
+      const batchTasks = getTasksArray().filter((t) => t.batchId === task.batchId);
       totalTasks = batchTasks.length;
       completedTasks = batchTasks.filter(
-        (t) =>
-          t.status === "completed" ||
-          t.status === "error" ||
-          t.status === "cancelled",
+        (t) => t.status === "completed" || t.status === "error" || t.status === "cancelled"
       ).length;
       runningTasks = batchTasks.filter((t) => t.status === "running").length;
     }
 
     // Build visible message
-    const visibleStatus = NOTIFICATION_MESSAGES.visibleResumeCompleted(
-      task.resumeCount,
-      duration,
-    );
-    const progressLine = NOTIFICATION_MESSAGES.taskProgressLine(
-      completedTasks,
-      totalTasks,
-    );
+    const visibleStatus = NOTIFICATION_MESSAGES.visibleResumeCompleted(task.resumeCount, duration);
+    const progressLine = NOTIFICATION_MESSAGES.taskProgressLine(completedTasks, totalTasks);
     const devIndicator =
-      process.env.SUPERAGENTS_DEBUG === "1"
-        ? ` ${NOTIFICATION_MESSAGES.devHintIndicator}`
-        : "";
+      process.env.SUPERAGENTS_DEBUG === "1" ? ` ${NOTIFICATION_MESSAGES.devHintIndicator}` : "";
     const visibleMessage = `${visibleStatus}\n${progressLine}${devIndicator}`;
 
     // Build hidden hint
@@ -387,13 +400,13 @@ export async function notifyResumeError(
   client: OpencodeClient,
   directory: string,
   toolContext: { sessionID: string; agent: string },
-  getTasksArray?: () => BackgroundTask[],
+  getTasksArray?: () => BackgroundTask[]
 ): Promise<void> {
   try {
     // Calculate duration
     const duration = formatDuration(
       new Date(task.startedAt),
-      task.completedAt ? new Date(task.completedAt) : undefined,
+      task.completedAt ? new Date(task.completedAt) : undefined
     );
 
     // Calculate batch progress if available
@@ -401,40 +414,24 @@ export async function notifyResumeError(
     let totalTasks = 1;
     let runningTasks = 0;
     if (getTasksArray) {
-      const batchTasks = getTasksArray().filter(
-        (t) => t.batchId === task.batchId,
-      );
+      const batchTasks = getTasksArray().filter((t) => t.batchId === task.batchId);
       totalTasks = batchTasks.length;
       completedTasks = batchTasks.filter(
-        (t) =>
-          t.status === "completed" ||
-          t.status === "error" ||
-          t.status === "cancelled",
+        (t) => t.status === "completed" || t.status === "error" || t.status === "cancelled"
       ).length;
       runningTasks = batchTasks.filter((t) => t.status === "running").length;
     }
 
     // Build visible message
-    const visibleStatus = NOTIFICATION_MESSAGES.visibleResumeFailed(
-      task.resumeCount,
-      duration,
-    );
-    const progressLine = NOTIFICATION_MESSAGES.taskProgressLine(
-      completedTasks,
-      totalTasks,
-    );
+    const visibleStatus = NOTIFICATION_MESSAGES.visibleResumeFailed(task.resumeCount, duration);
+    const progressLine = NOTIFICATION_MESSAGES.taskProgressLine(completedTasks, totalTasks);
     const devIndicator =
-      process.env.SUPERAGENTS_DEBUG === "1"
-        ? ` ${NOTIFICATION_MESSAGES.devHintIndicator}`
-        : "";
+      process.env.SUPERAGENTS_DEBUG === "1" ? ` ${NOTIFICATION_MESSAGES.devHintIndicator}` : "";
     const visibleMessage = `${visibleStatus}\n${progressLine}${devIndicator}`;
 
     // Build hidden hint with error message
     const taskShortId = shortId(task.sessionID);
-    const hiddenHint = SYSTEM_HINT_MESSAGES.errorHint(
-      taskShortId,
-      errorMessage,
-    );
+    const hiddenHint = SYSTEM_HINT_MESSAGES.errorHint(taskShortId, errorMessage);
 
     await client.session.prompt({
       path: { id: toolContext.sessionID },
