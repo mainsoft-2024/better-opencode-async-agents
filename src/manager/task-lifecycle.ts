@@ -1,5 +1,5 @@
 import { type SessionMessage, formatMessagesAsContext, processMessagesForFork } from "../fork";
-import { FORK_MESSAGES } from "../prompts";
+import { FORK_MESSAGES, buildForkPreamble } from "../prompts";
 import type { BackgroundTask, LaunchInput, OpencodeClient } from "../types";
 
 /**
@@ -50,10 +50,22 @@ export async function launchTask(
       })
       .catch(() => {});
 
-    // Inject preamble
+    // Inject preamble (native fork doesn't process messages, so use default stats)
     await client.session.prompt({
       path: { id: sessionID },
-      body: { noReply: true, parts: [{ type: "text", text: FORK_MESSAGES.preamble }] },
+      body: {
+        noReply: true,
+        parts: [
+          {
+            type: "text",
+            text: buildForkPreamble({
+              compactionDetected: false,
+              tierDistribution: { tier1: 0, tier2: 0, tier3: 0 },
+              removedMessages: 0,
+            }),
+          },
+        ],
+      },
     });
   } else {
     // === INJECT (default): session.create + context injection ===
@@ -83,11 +95,12 @@ export async function launchTask(
           const parentMessages = messagesResult.data as SessionMessage[];
 
           if (parentMessages.length > 0) {
-            const { messages: processedMessages } = processMessagesForFork(parentMessages);
-            const contextText = formatMessagesAsContext(processedMessages);
+            const { messages: processedMessages, stats } = processMessagesForFork(parentMessages);
+            const contextText = formatMessagesAsContext(processedMessages, stats);
 
             if (contextText) {
-              const contextWithPreamble = `${FORK_MESSAGES.preamble}\n\n${contextText}`;
+              const preamble = buildForkPreamble(stats);
+              const contextWithPreamble = `${preamble}\n\n${contextText}`;
               await client.session.prompt({
                 path: { id: sessionID },
                 body: { noReply: true, parts: [{ type: "text", text: contextWithPreamble }] },

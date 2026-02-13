@@ -73,21 +73,28 @@ Task ID: \`${shortTaskId}\`
 
 You can continue working or say 'waiting' and halt.`,
 
-  taskCancelled: (shortTaskId: string, description: string) => `⊘ **Task cancelled**
+  taskCancelled: (
+    shortTaskId: string,
+    description: string,
+  ) => `⊘ **Task cancelled**
 
 Task ID: \`${shortTaskId}\`
 Description: ${description}
 Status: ⊘ cancelled`,
 
   resumeInitiated: (shortTaskId: string, resumeCount: number) => {
-    const resumeCountInfo = resumeCount > 1 ? `\nResume count: ${resumeCount}` : "";
+    const resumeCountInfo =
+      resumeCount > 1 ? `\nResume count: ${resumeCount}` : "";
     return `⏳ **Resume initiated**
 Task ID: \`${shortTaskId}\`${resumeCountInfo}
 
 Follow-up prompt sent. You can continue working or say 'waiting' and halt.`;
   },
 
-  clearedAllTasks: (runningCount: number, totalCount: number) => `✓ **Cleared all background tasks**
+  clearedAllTasks: (
+    runningCount: number,
+    totalCount: number,
+  ) => `✓ **Cleared all background tasks**
 
 Running tasks aborted: ${runningCount}
 Total tasks cleared: ${totalCount}`,
@@ -110,17 +117,20 @@ export const ERROR_MESSAGES = {
     `Task not found: ${taskId}. Use asyncagents_list to see available tasks.`,
 
   // Resume validation errors
-  taskCurrentlyResuming: "Task is currently being resumed. Wait for completion.",
+  taskCurrentlyResuming:
+    "Task is currently being resumed. Wait for completion.",
   onlyCompletedCanResume: (currentStatus: string) =>
     `Only completed tasks can be resumed. Current status: ${currentStatus}`,
-  sessionExpired: "Session expired or was deleted. Start a new asyncagents_task to continue.",
+  sessionExpired:
+    "Session expired or was deleted. Start a new asyncagents_task to continue.",
 
   // Launch validation errors
   agentRequired: "Agent parameter is required. Specify which agent to use.",
   promptRequired: "Prompt is required when resuming a task",
 
   // Generic errors
-  launchFailed: (message: string) => `Failed to launch background task: ${message}`,
+  launchFailed: (message: string) =>
+    `Failed to launch background task: ${message}`,
   cancelFailed: (message: string) => `Error cancelling task: ${message}`,
   listFailed: (message: string) => `Error listing tasks: ${message}`,
   outputFailed: (message: string) => `Error getting output: ${message}`,
@@ -130,7 +140,8 @@ export const ERROR_MESSAGES = {
 
   // List empty states
   noTasksFound: "No background tasks found.",
-  noTasksWithStatus: (status: string) => `No background tasks found with status "${status}".`,
+  noTasksWithStatus: (status: string) =>
+    `No background tasks found with status "${status}".`,
   noTasksToClear: "No background tasks to clear.",
 };
 
@@ -139,7 +150,8 @@ export const ERROR_MESSAGES = {
 // =============================================================================
 
 export const WARNING_MESSAGES = {
-  resumeModeIgnoresParams: "Note: agent and description are ignored in resume mode.",
+  resumeModeIgnoresParams:
+    "Note: agent and description are ignored in resume mode.",
 };
 
 // =============================================================================
@@ -149,11 +161,35 @@ export const WARNING_MESSAGES = {
 export const FORK_MESSAGES = {
   forkResumeConflict:
     "Cannot use fork and resume together. Use fork for new tasks with context, resume for continuing existing tasks.",
-
-  preamble: `You are working with forked context from a parent agent session.
-Note: Some older tool results may have been truncated to save tokens.
-If you need complete file contents or detailed results, re-read the files directly.`,
 };
+
+/**
+ * Builds a dynamic preamble for forked context with truncation metadata.
+ * Informs the child agent about what processing was applied to the inherited context.
+ */
+export function buildForkPreamble(stats: {
+  compactionDetected: boolean;
+  tierDistribution: { tier1: number; tier2: number; tier3: number };
+  removedMessages: number;
+}): string {
+  const compactionStatus = stats.compactionDetected
+    ? "Compaction summary included (messages before compaction removed)"
+    : "No compaction detected";
+
+  const tierSummary = `Tool results: ${stats.tierDistribution.tier1} full, ${stats.tierDistribution.tier2} truncated to 3000 chars, ${stats.tierDistribution.tier3} truncated to 500 chars`;
+
+  const removalStatus =
+    stats.removedMessages > 0
+      ? `${stats.removedMessages} oldest messages removed to fit 200k char budget`
+      : "All messages preserved";
+
+  return `You are working with forked context from a parent agent session.
+Context processing applied:
+- ${compactionStatus}
+- ${tierSummary}
+- ${removalStatus}
+If you need complete file contents or detailed results, re-read the files directly.`;
+}
 
 // =============================================================================
 // Notification Messages (sent to parent session)
@@ -176,7 +212,8 @@ export const NOTIFICATION_MESSAGES = {
   visibleResumeFailed: (resumeCount: number, duration: string) =>
     `✗ **Resume #${resumeCount} failed in ${duration}.**`,
 
-  taskProgressLine: (completed: number, total: number) => `Task Progress: ${completed}/${total}`,
+  taskProgressLine: (completed: number, total: number) =>
+    `Task Progress: ${completed}/${total}`,
 
   devHintIndicator: "[hint attached]",
 };
@@ -199,7 +236,8 @@ Use asyncagents_output tools to see agent responses.`,
     `Task failed: ${errorMessage}
 Use asyncagents_output(task_id="${taskId}") for details.`,
 
-  resumeHint: (taskId: string) => `Use asyncagents_output(task_id="${taskId}") for full response.`,
+  resumeHint: (taskId: string) =>
+    `Use asyncagents_output(task_id="${taskId}") for full response.`,
 };
 
 // =============================================================================
@@ -223,7 +261,8 @@ export const TOAST_TITLES = {
 // =============================================================================
 
 export const STATUS_NOTES = {
-  running: "\n\n> ⏳ **Running**: Task is still in progress. Check back later for results.",
+  running:
+    "\n\n> ⏳ **Running**: Task is still in progress. Check back later for results.",
   failed: (error: string) => `\n\n> ✗ **Failed**: ${error || "Unknown error"}`,
   cancelled: "\n\n> ⊘ **Cancelled**: Task was cancelled before completion.",
 };
@@ -242,7 +281,7 @@ export const FORMAT_TEMPLATES = {
     duration: string,
     progressSection: string,
     statusNote: string,
-    promptPreview: string
+    promptPreview: string,
   ) => `# ${icon} Task Status
 
 | Field | Value |
@@ -259,7 +298,12 @@ ${statusNote}
 ${promptPreview}
 \`\`\``,
 
-  taskResult: (shortTaskId: string, description: string, duration: string, content: string) =>
+  taskResult: (
+    shortTaskId: string,
+    description: string,
+    duration: string,
+    content: string,
+  ) =>
     `✓ **Task Completed**
 
 | Field | Value |
@@ -272,7 +316,12 @@ ${promptPreview}
 
 ${content}`,
 
-  taskResultError: (shortTaskId: string, description: string, duration: string, errMsg: string) =>
+  taskResultError: (
+    shortTaskId: string,
+    description: string,
+    duration: string,
+    errMsg: string,
+  ) =>
     `Task Result
 
 Task ID: ${shortTaskId}
@@ -294,11 +343,12 @@ Error fetching messages: ${errMsg}`,
     completed: number,
     errored: number,
     cancelled: number,
-    totalToolCalls: number
+    totalToolCalls: number,
   ) =>
-    `**Total: ${total}** | ⏳ ${running} running | ✓ ${completed} completed | ✗ ${errored} error | ⊘ ${cancelled} cancelled | 🔧 ${totalToolCalls} tool calls`,
+    `**Total: ${total}** | ⏳ ${running} running | ✓ ${completed} completed | ✗ ${errored} error | ⊘ ${cancelled} cancelled | 🔧${totalToolCalls}`,
 
-  progressSection: (tools: string[]) => `\n| Last tools | ${tools.join(" → ")} |`,
+  progressSection: (tools: string[]) =>
+    `\n| Last tools | ${tools.join(" → ")} |`,
 };
 
 // =============================================================================

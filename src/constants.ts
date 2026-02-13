@@ -43,17 +43,63 @@ export const STORAGE_DIR = `${HOME_DIR}/.opencode/plugins/better-opencode-async-
 export const TASKS_FILE = `${STORAGE_DIR}/tasks.json`;
 
 // =============================================================================
-// Fork Constants
+// Fork Constants - Character-Based Budget
 // =============================================================================
 
-/** Maximum tokens to include in forked context (leaves room for response) */
-export const FORK_MAX_TOKENS = 100000;
+/** Maximum characters in formatted fork context (200k chars ≈ 50k tokens) */
+export const FORK_CHAR_BUDGET = 200_000;
 
-/** Maximum characters per tool result before truncation */
-export const FORK_TOOL_RESULT_LIMIT = 1500;
+/** Below this character count, skip message removal entirely */
+export const FORK_CHAR_NO_REMOVAL = 120_000;
 
-/** Maximum characters for tool parameters preview in forked context */
-export const FORK_TOOL_PARAMS_LIMIT = 200;
+// ─── Graduated Tier Configuration ───
+
+/** Number of most recent tool results that receive unlimited content (Tier 1) */
+export const FORK_TIER1_COUNT = 5;
+
+/** Number of next tool results that receive medium truncation (Tier 2) */
+export const FORK_TIER2_COUNT = 10;
+
+/** Character limit for Tier 2 tool results */
+export const FORK_TIER2_LIMIT = 3_000;
+
+/** Character limit for Tier 3 (oldest) tool results */
+export const FORK_TIER3_LIMIT = 500;
+
+// ─── Tool Parameters Per Tier ───
+
+/** Tool params character budget for Tier 1 (recent) */
+export const FORK_PARAMS_TIER1 = 500;
+
+/** Tool params character budget for Tier 2 (medium) */
+export const FORK_PARAMS_TIER2 = 200;
+
+/** Tool params character budget for Tier 3 (old) */
+export const FORK_PARAMS_TIER3 = 100;
+
+// ─── Head+Tail Truncation Configuration ───
+
+/** Ratio of budget allocated to head content in head+tail truncation */
+export const FORK_HEAD_RATIO = 0.8;
+
+/** Ratio of budget allocated to tail content in head+tail truncation */
+export const FORK_TAIL_RATIO = 0.2;
+
+// ─── Detection Patterns ───
+
+/** Error patterns that trigger head+tail truncation mode (case-sensitive per pattern) */
+export const FORK_ERROR_PATTERNS = [
+  "error",
+  "Error",
+  "ERROR",
+  "failed",
+  "FAILED",
+  "exception",
+  "traceback",
+];
+
+/** Tool name keywords that trigger head+tail truncation mode */
+export const FORK_HEAD_TAIL_KEYWORDS = ["bash", "pty", "exec"];
 
 // =============================================================================
 // HTTP Status API Server

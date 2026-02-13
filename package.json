@@ -1,6 +1,6 @@
 {
   "name": "better-opencode-async-agents",
-  "version": "0.5.3",
+  "version": "0.5.4",
   "description": "Background task management plugin for OpenCode AI",
   "type": "module",
   "main": "./dist/index.js",
@@ -80,7 +80,6 @@
     ]
   },
   "dependencies": {
-    "@anthropic-ai/tokenizer": "^0.0.4",
     "zod": "^4.3.5"
   }
 }
