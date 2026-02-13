@@ -8,6 +8,7 @@ import {
   FORK_ERROR_PATTERNS,
   FORK_HEAD_RATIO,
   FORK_HEAD_TAIL_KEYWORDS,
+  FORK_NO_TRUNCATION_TOOLS,
   FORK_PARAMS_TIER1,
   FORK_PARAMS_TIER2,
   FORK_PARAMS_TIER3,
@@ -275,6 +276,9 @@ export function processMessagesForFork(messages: SessionMessage[]): {
         continue;
       }
 
+      // Resolve tool name once for both no-truncation check and strategy determination
+      const toolName = resolveToolName(msg.parts!, partIdx);
+
       // Determine tier and apply truncation
       const tier = getToolResultTier(indexFromEnd);
 
@@ -289,9 +293,14 @@ export function processMessagesForFork(messages: SessionMessage[]): {
         continue;
       }
 
+      // Skip truncation for tools in the no-truncation list (raw data preserved)
+      if (toolName && FORK_NO_TRUNCATION_TOOLS.some((name) => toolName.includes(name))) {
+        processedParts.push(part);
+        continue;
+      }
+
       // Determine truncation strategy with resolved tool name
       const limit = tier === 2 ? FORK_TIER2_LIMIT : FORK_TIER3_LIMIT;
-      const toolName = resolveToolName(msg.parts!, partIdx);
       const useHeadTail = shouldUseHeadTail(toolName, part.text);
 
       const truncatedText = truncateWithStrategy(part.text, limit, useHeadTail);

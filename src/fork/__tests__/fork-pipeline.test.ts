@@ -136,6 +136,69 @@ describe("graduated tier truncation", () => {
       "[Old tool result content cleared]"
     );
   });
+
+  test("ask_user_questions in tier 2+ is NOT truncated (raw data preserved)", () => {
+    // Create a long response that would normally be truncated
+    const longText = "x".repeat(6000);
+    // Create 6 messages with ask_user_questions: first is tier 2, last 5 are tier 1
+    const filler = Array.from({ length: 5 }, () => makeToolResultMsg("short", "read"));
+    const askUserMsg: SessionMessage = {
+      info: { role: "assistant" },
+      parts: [
+        { type: "tool", tool: "ask_user_questions", state: { input: {} } },
+        { type: "tool_result", text: longText, name: "ask_user_questions" },
+      ],
+    };
+    const messages = [askUserMsg, ...filler];
+    const { messages: result, stats } = processMessagesForFork(messages);
+
+    // The ask_user_questions result should NOT be truncated despite being tier 2
+    const askUserResult = result[0].parts!.find((p) => p.type === "tool_result")!;
+    expect(askUserResult.text!.length).toBe(6000);
+    expect(askUserResult.text).not.toContain("truncated");
+    expect(stats.truncatedResults).toBe(0);
+  });
+
+  test("ask_user_questions in tier 3 is NOT truncated", () => {
+    // Create 16 messages: first is tier 3, next 10 tier 2, last 5 tier 1
+    const longText = "x".repeat(6000);
+    const filler = Array.from({ length: 15 }, () => makeToolResultMsg("short", "read"));
+    const askUserMsg: SessionMessage = {
+      info: { role: "assistant" },
+      parts: [
+        { type: "tool", tool: "mcp_ask_user_questions", state: { input: {} } },
+        { type: "tool_result", text: longText, name: "mcp_ask_user_questions" },
+      ],
+    };
+    const messages = [askUserMsg, ...filler];
+    const { messages: result, stats } = processMessagesForFork(messages);
+
+    // The ask_user_questions result should NOT be truncated even in tier 3
+    const askUserResult = result[0].parts!.find((p) => p.type === "tool_result")!;
+    expect(askUserResult.text!.length).toBe(6000);
+    expect(askUserResult.text).not.toContain("truncated");
+  });
+
+  test("normal tools in same tier ARE truncated (exception is specific)", () => {
+    // Same setup as above but with a normal tool
+    const longText = "x".repeat(6000);
+    const filler = Array.from({ length: 5 }, () => makeToolResultMsg("short", "read"));
+    const normalToolMsg: SessionMessage = {
+      info: { role: "assistant" },
+      parts: [
+        { type: "tool", tool: "read", state: { input: {} } },
+        { type: "tool_result", text: longText, name: "read" },
+      ],
+    };
+    const messages = [normalToolMsg, ...filler];
+    const { messages: result, stats } = processMessagesForFork(messages);
+
+    // The normal read tool SHOULD be truncated in tier 2
+    const readResult = result[0].parts!.find((p) => p.type === "tool_result")!;
+    expect(readResult.text!.length).toBeLessThan(6000);
+    expect(readResult.text).toContain("truncated");
+    expect(stats.truncatedResults).toBe(1);
+  });
 });
 
 // =============================================================================

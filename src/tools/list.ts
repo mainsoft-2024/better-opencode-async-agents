@@ -1,6 +1,10 @@
 import { type ToolDefinition, tool } from "@opencode-ai/plugin";
 import { formatDuration, getStatusIcon, uniqueShortId } from "../helpers";
-import { ERROR_MESSAGES, FORMAT_TEMPLATES, TOOL_DESCRIPTIONS } from "../prompts";
+import {
+  ERROR_MESSAGES,
+  FORMAT_TEMPLATES,
+  TOOL_DESCRIPTIONS,
+} from "../prompts";
 import type { BackgroundTask } from "../types";
 
 // =============================================================================
@@ -36,7 +40,10 @@ export function createBackgroundList(manager: {
             : ERROR_MESSAGES.noTasksFound;
         }
 
-        tasks.sort((a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime());
+        tasks.sort(
+          (a, b) =>
+            new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime(),
+        );
 
         const header = FORMAT_TEMPLATES.listHeader;
 
@@ -58,7 +65,9 @@ export function createBackgroundList(manager: {
               .filter(Boolean)
               .join(" ");
             const shortId = uniqueShortId(task.sessionID, allSessionIds);
-            const idWithIndicators = indicators ? `${shortId} ${indicators}` : shortId;
+            const idWithIndicators = indicators
+              ? `${shortId} ${indicators}`
+              : shortId;
             const toolsInfo =
               task.progress?.toolCallsByName &&
               Object.keys(task.progress.toolCallsByName).length > 0
@@ -67,7 +76,7 @@ export function createBackgroundList(manager: {
                     .map(([name, count]) => `${name}:${count}`)
                     .join(" ")
                 : task.progress?.toolCalls
-                  ? `${task.progress.toolCalls} calls`
+                  ? `🔧${task.progress.toolCalls}`
                   : "-";
             return `| \`${idWithIndicators}\` | ${desc} | ${task.agent} | ${icon} ${task.status} | ${duration} | ${toolsInfo} |`;
           })
@@ -77,7 +86,10 @@ export function createBackgroundList(manager: {
         const completed = tasks.filter((t) => t.status === "completed").length;
         const errored = tasks.filter((t) => t.status === "error").length;
         const cancelled = tasks.filter((t) => t.status === "cancelled").length;
-        const totalToolCalls = tasks.reduce((sum, t) => sum + (t.progress?.toolCalls ?? 0), 0);
+        const totalToolCalls = tasks.reduce(
+          (sum, t) => sum + (t.progress?.toolCalls ?? 0),
+          0,
+        );
 
         return `${header}
 ${rows}
@@ -85,7 +97,9 @@ ${rows}
 ---
 ${FORMAT_TEMPLATES.listSummary(tasks.length, running, completed, errored, cancelled, totalToolCalls)}`;
       } catch (error) {
-        return ERROR_MESSAGES.listFailed(error instanceof Error ? error.message : String(error));
+        return ERROR_MESSAGES.listFailed(
+          error instanceof Error ? error.message : String(error),
+        );
       }
     },
   });

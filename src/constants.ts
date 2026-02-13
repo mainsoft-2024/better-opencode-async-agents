@@ -101,6 +101,9 @@ export const FORK_ERROR_PATTERNS = [
 /** Tool name keywords that trigger head+tail truncation mode */
 export const FORK_HEAD_TAIL_KEYWORDS = ["bash", "pty", "exec"];
 
+/** Tool names whose results should NEVER be truncated (raw data preserved) */
+export const FORK_NO_TRUNCATION_TOOLS = ["ask_user_questions"];
+
 // =============================================================================
 // HTTP Status API Server
 // =============================================================================
