@@ -1,6 +1,6 @@
-import { COMPLETION_DISPLAY_DURATION } from "../constants";
+import { COMPLETION_DISPLAY_DURATION, STREAM_CHARS_PER_FRAME, STREAMING_FRAMES, WAITING_FRAMES, TOOL_FRAMES } from "../constants";
 import { setTaskStatus } from "../helpers";
-import type { BackgroundTask, OpencodeClient } from "../types";
+import type { BackgroundTask, OpencodeClient, TaskPhase } from "../types";
 
 /**
  * FALLBACK & PROGRESS MECHANISM: Polling for task status updates.
@@ -197,6 +197,8 @@ export async function pollRunningTasks(
  * - Tool call count
  * - Last 3 tools used
  * - Last update timestamp
+ * - Current phase (waiting / streaming / tool)
+ * - Per-phase animation frames
  */
 export async function updateTaskProgress(
   task: BackgroundTask,
@@ -215,6 +217,9 @@ export async function updateTaskProgress(
     let toolCalls = 0;
     const toolCallsByName: Record<string, number> = {};
     const allTools: string[] = [];
+    let totalTextCharCount = 0;
+    let lastMeaningfulPartType: "text" | "tool" | null = null;
+    let hasAnyAssistantContent = false;
 
     for (const msg of messages) {
       const parts = msg.parts ?? msg.content ?? [];
@@ -227,22 +232,66 @@ export async function updateTaskProgress(
           toolCalls++;
           toolCallsByName[part.tool] = (toolCallsByName[part.tool] ?? 0) + 1;
           allTools.push(part.tool);
+          lastMeaningfulPartType = "tool";
+          hasAnyAssistantContent = true;
+        } else if (part.type === "text" && part.text && part.text.length > 0) {
+          totalTextCharCount += part.text.length;
+          lastMeaningfulPartType = "text";
+          hasAnyAssistantContent = true;
         }
       }
     }
 
+    // Determine phase from latest meaningful assistant content
+    let phase: TaskPhase;
+    if (!hasAnyAssistantContent) {
+      phase = "waiting";
+    } else if (lastMeaningfulPartType === "tool") {
+      phase = "tool";
+    } else {
+      phase = "streaming";
+    }
+
+    // Initialize progress if needed
     if (!task.progress) {
       task.progress = {
         toolCalls: 0,
         toolCallsByName: {},
         lastTools: [],
         lastUpdate: new Date().toISOString(),
+        phase: "waiting",
+        textCharCount: 0,
+        streamFrame: 0,
+        waitingFrame: 0,
+        toolFrame: 0,
       };
     }
+
+    // Advance streaming frame based on text growth (not wall-clock)
+    const prevTextCharCount = task.progress.textCharCount;
+    const deltaChars = Math.max(0, totalTextCharCount - (prevTextCharCount ?? 0));
+    if (deltaChars > 0 && phase === "streaming") {
+      const frameAdvance = Math.floor(deltaChars / STREAM_CHARS_PER_FRAME);
+      if (frameAdvance > 0) {
+        task.progress.streamFrame = ((task.progress.streamFrame ?? 0) + frameAdvance) % STREAMING_FRAMES.length;
+      }
+    }
+
+    // Advance waiting/tool frames by 1 per poll when in those phases
+    if (phase === "waiting") {
+      task.progress.waitingFrame = ((task.progress.waitingFrame ?? 0) + 1) % WAITING_FRAMES.length;
+    }
+    if (phase === "tool") {
+      task.progress.toolFrame = ((task.progress.toolFrame ?? 0) + 1) % TOOL_FRAMES.length;
+    }
+
+    // Update all progress fields
     task.progress.toolCalls = toolCalls;
     task.progress.toolCallsByName = toolCallsByName;
     task.progress.lastTools = allTools.slice(-3);
     task.progress.lastUpdate = new Date().toISOString();
+    task.progress.phase = phase;
+    task.progress.textCharCount = totalTextCharCount;
   } catch {
     // Ignore progress update errors
   }

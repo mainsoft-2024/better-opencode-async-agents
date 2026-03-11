@@ -49,7 +49,6 @@ export class BackgroundManager {
   private client: OpencodeClient;
   private directory: string;
   private pollingInterval?: Timer;
-  private animationFrame = 0;
   private currentBatchId: string | null = null;
   private tasks: Map<string, BackgroundTask> = new Map();
   private originalParentSessionID: string | null = null;
@@ -651,8 +650,7 @@ export class BackgroundManager {
   }
 
   private showProgressToast(tasks: BackgroundTask[]): void {
-    showProgressToast(tasks, this.animationFrame, this.client, () => this.getAllTasks());
-    this.animationFrame = (this.animationFrame + 1) % 10;
+    showProgressToast(tasks, this.client, () => this.getAllTasks());
   }
 
   /**
@@ -660,11 +658,19 @@ export class BackgroundManager {
    */
   private async updateTaskProgressWithEvent(task: BackgroundTask): Promise<void> {
     const previousToolCalls = task.progress?.toolCalls ?? 0;
+    const previousPhase = task.progress?.phase;
+    const previousTextCharCount = task.progress?.textCharCount ?? 0;
     await updateTaskProgress(task, this.client);
     const currentToolCalls = task.progress?.toolCalls ?? 0;
+    const currentPhase = task.progress?.phase;
+    const currentTextCharCount = task.progress?.textCharCount ?? 0;
 
-    // Emit task.updated only if progress actually changed (tool calls increased)
-    if (currentToolCalls > previousToolCalls) {
+    // Emit task.updated when progress meaningfully changed
+    if (
+      currentToolCalls > previousToolCalls ||
+      currentPhase !== previousPhase ||
+      currentTextCharCount > previousTextCharCount
+    ) {
       this.emitTaskEvent("task.updated", task);
     }
   }

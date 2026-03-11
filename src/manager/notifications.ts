@@ -1,4 +1,4 @@
-import { COMPLETION_DISPLAY_DURATION, SPINNER_FRAMES } from "../constants";
+import { COMPLETION_DISPLAY_DURATION, STREAMING_FRAMES, WAITING_FRAMES, TOOL_FRAMES } from "../constants";
 import { shortId } from "../helpers";
 import {
   NOTIFICATION_MESSAGES,
@@ -34,9 +34,23 @@ const notifyStateMap = new Map<string, NotifyState>();
 /**
  * Shows a toast notification with progress information about running and completed background tasks.
  */
+/**
+ * Returns the animation icon for a running task based on its current phase.
+ */
+function getPhaseIcon(task: BackgroundTask): string {
+  const phase = task.progress?.phase ?? "waiting";
+  switch (phase) {
+    case "waiting":
+      return WAITING_FRAMES[task.progress?.waitingFrame ?? 0] ?? "◌";
+    case "streaming":
+      return STREAMING_FRAMES[task.progress?.streamFrame ?? 0] ?? "⠋";
+    case "tool":
+      return TOOL_FRAMES[task.progress?.toolFrame ?? 0] ?? "▱";
+  }
+}
+
 export function showProgressToast(
   allTasks: BackgroundTask[],
-  animationFrame: number,
   client: OpencodeClient,
   getTasksArray: () => BackgroundTask[]
 ): void {
@@ -69,8 +83,6 @@ export function showProgressToast(
     (t) => t.status === "completed" || t.status === "error" || t.status === "cancelled"
   ).length;
 
-  const nextAnimationFrame = (animationFrame + 1) % SPINNER_FRAMES.length;
-  const spinner = SPINNER_FRAMES[nextAnimationFrame];
 
   const totalToolCalls = batchTasks.reduce((sum, t) => sum + (t.progress?.toolCalls ?? 0), 0);
 
@@ -99,8 +111,9 @@ export function showProgressToast(
     }
     const callCount = task.progress?.toolCalls ?? 0;
     const callsStr = callCount > 0 ? ` 🔧${callCount}` : "";
+    const icon = getPhaseIcon(task);
     taskLines.push(
-      `${spinner} [${shortId(task.sessionID)}] ${task.agent}: ${task.description} (${duration})${toolsStr}${callsStr}`
+      `${icon} [${task.agent}#${shortId(task.sessionID)}] ${task.description} (${duration})${toolsStr}${callsStr}`
     );
   }
 
@@ -120,11 +133,11 @@ export function showProgressToast(
       new Date(task.startedAt),
       task.completedAt ? new Date(task.completedAt) : undefined
     );
-    const icon = task.status === "completed" ? "✓" : task.status === "error" ? "✗" : "⊘";
+    const statusIcon = task.status === "completed" ? "✓" : task.status === "error" ? "✗" : "⊘";
     const callCount = task.progress?.toolCalls ?? 0;
     const callsStr = callCount > 0 ? ` 🔧${callCount}` : "";
     taskLines.push(
-      `${icon} [${shortId(task.sessionID)}] ${task.agent}: ${task.description} (${duration})${callsStr}`
+      `${statusIcon} [${task.agent}#${shortId(task.sessionID)}] ${task.description} (${duration})${callsStr}`
     );
   }
 
@@ -157,8 +170,10 @@ export function showProgressToast(
   if (!tuiClient.tui?.showToast) return;
 
   const hasRunning = runningTasks.filter((t) => t.batchId === activeBatchId).length > 0;
+  const firstRunningTask = runningTasks.filter((t) => t.batchId === activeBatchId)[0];
+  const titleIcon = firstRunningTask ? getPhaseIcon(firstRunningTask) : "⏳";
   const title = hasRunning
-    ? TOAST_TITLES.backgroundTasksRunning(spinner ?? "⏳")
+    ? TOAST_TITLES.backgroundTasksRunning(titleIcon)
     : TOAST_TITLES.tasksComplete;
   const variant = hasRunning ? "info" : "success";
 

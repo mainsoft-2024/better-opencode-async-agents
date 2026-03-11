@@ -133,6 +133,11 @@ export async function launchTask(
       toolCallsByName: {},
       lastTools: [],
       lastUpdate: new Date().toISOString(),
+      phase: "waiting",
+      textCharCount: 0,
+      streamFrame: 0,
+      waitingFrame: 0,
+      toolFrame: 0,
     },
   };
 

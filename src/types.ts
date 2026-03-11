@@ -6,11 +6,19 @@ import type { PluginInput } from "@opencode-ai/plugin";
 
 export type BackgroundTaskStatus = "running" | "completed" | "error" | "cancelled" | "resumed";
 
+export type TaskPhase = "waiting" | "streaming" | "tool";
+
 export interface TaskProgress {
   toolCalls: number;
   toolCallsByName: Record<string, number>;
   lastTools: string[];
   lastUpdate: string;
+  // Phase-aware animation state
+  phase: TaskPhase;
+  textCharCount: number;
+  streamFrame: number;
+  waitingFrame: number;
+  toolFrame: number;
 }
 
 /**

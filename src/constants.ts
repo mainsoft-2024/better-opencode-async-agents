@@ -3,7 +3,15 @@
 // =============================================================================
 
 export const COMPLETION_DISPLAY_DURATION = 10000;
-export const SPINNER_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
+// Phase-specific animation frames
+export const WAITING_FRAMES = ["◌", "●"];
+export const STREAMING_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
+export const TOOL_FRAMES = ["▱", "▰", "▰", "▱"];
+/** @deprecated Use STREAMING_FRAMES instead */
+export const SPINNER_FRAMES = STREAMING_FRAMES;
+
+/** Characters of assistant text output per streaming animation frame advance (~5 tokens) */
+export const STREAM_CHARS_PER_FRAME = 20;
 
 // =============================================================================
 // Storage Constants
