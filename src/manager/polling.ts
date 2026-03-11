@@ -218,7 +218,6 @@ export async function updateTaskProgress(
     const toolCallsByName: Record<string, number> = {};
     const allTools: string[] = [];
     let totalTextCharCount = 0;
-    let lastMeaningfulPartType: "text" | "tool" | null = null;
     let hasAnyAssistantContent = false;
 
     for (const msg of messages) {
@@ -232,21 +231,25 @@ export async function updateTaskProgress(
           toolCalls++;
           toolCallsByName[part.tool] = (toolCallsByName[part.tool] ?? 0) + 1;
           allTools.push(part.tool);
-          lastMeaningfulPartType = "tool";
           hasAnyAssistantContent = true;
         } else if (part.type === "text" && part.text && part.text.length > 0) {
           totalTextCharCount += part.text.length;
-          lastMeaningfulPartType = "text";
           hasAnyAssistantContent = true;
         }
       }
     }
 
-    // Determine phase from latest meaningful assistant content
+    // Determine phase based on activity delta, not message part order.
+    // Using last-part-type causes 'tool' to dominate because assistant messages
+    // typically end with a tool call part. Instead, compare tool count changes:
+    //   - No assistant content at all → waiting
+    //   - Tool count increased since last poll → tool (actively calling tools)
+    //   - Otherwise → streaming (LLM generating text / idle between actions)
+    const prevToolCalls = task.progress?.toolCalls ?? 0;
     let phase: TaskPhase;
     if (!hasAnyAssistantContent) {
       phase = "waiting";
-    } else if (lastMeaningfulPartType === "tool") {
+    } else if (toolCalls > prevToolCalls) {
       phase = "tool";
     } else {
       phase = "streaming";
@@ -267,14 +270,10 @@ export async function updateTaskProgress(
       };
     }
 
-    // Advance streaming frame based on text growth (not wall-clock)
-    const prevTextCharCount = task.progress.textCharCount;
-    const deltaChars = Math.max(0, totalTextCharCount - (prevTextCharCount ?? 0));
-    if (deltaChars > 0 && phase === "streaming") {
-      const frameAdvance = Math.floor(deltaChars / STREAM_CHARS_PER_FRAME);
-      if (frameAdvance > 0) {
-        task.progress.streamFrame = ((task.progress.streamFrame ?? 0) + frameAdvance) % STREAMING_FRAMES.length;
-      }
+    // Advance streaming frame deterministically from total text output.
+    // Using total chars avoids losing remainder when deltaChars < threshold.
+    if (phase === "streaming") {
+      task.progress.streamFrame = Math.floor(totalTextCharCount / STREAM_CHARS_PER_FRAME) % STREAMING_FRAMES.length;
     }
 
     // Advance waiting/tool frames by 1 per poll when in those phases
