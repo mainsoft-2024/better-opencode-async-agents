@@ -1,4 +1,4 @@
-import { COMPLETION_DISPLAY_DURATION, STREAM_CHARS_PER_FRAME, STREAMING_FRAMES, WAITING_FRAMES, TOOL_FRAMES } from "../constants";
+import { COMPLETION_DISPLAY_DURATION, STREAM_CHARS_PER_FRAME, STREAMING_FRAMES, WAITING_FRAMES, WAITING_FRAME_INTERVAL, TOOL_FRAMES } from "../constants";
 import { setTaskStatus } from "../helpers";
 import type { BackgroundTask, OpencodeClient, TaskPhase } from "../types";
 
@@ -278,7 +278,14 @@ export async function updateTaskProgress(
 
     // Advance waiting/tool frames by 1 per poll when in those phases
     if (phase === "waiting") {
-      task.progress.waitingFrame = ((task.progress.waitingFrame ?? 0) + 1) % WAITING_FRAMES.length;
+      const waitPollCount = (task.progress._waitPollCount ?? 0) + 1;
+      task.progress._waitPollCount = waitPollCount;
+      if (waitPollCount >= WAITING_FRAME_INTERVAL) {
+        task.progress.waitingFrame = ((task.progress.waitingFrame ?? 0) + 1) % WAITING_FRAMES.length;
+        task.progress._waitPollCount = 0;
+      }
+    } else {
+      task.progress._waitPollCount = 0;
     }
     if (phase === "tool") {
       task.progress.toolFrame = ((task.progress.toolFrame ?? 0) + 1) % TOOL_FRAMES.length;

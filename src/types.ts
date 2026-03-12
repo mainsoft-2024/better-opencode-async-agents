@@ -19,6 +19,7 @@ export interface TaskProgress {
   streamFrame: number;
   waitingFrame: number;
   toolFrame: number;
+  _waitPollCount?: number;
 }
 
 /**
