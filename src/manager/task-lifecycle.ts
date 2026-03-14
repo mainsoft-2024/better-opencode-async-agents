@@ -154,18 +154,25 @@ export async function launchTask(
 
   startPolling();
 
+  // Fetch agent config to check for explicit asyncagents tool overrides.
+  // Default: all asyncagents tools are blocked for spawned agents.
+  // Override: if the agent's config explicitly sets an asyncagents tool to true, honor it.
+  const configResult = await client.config.get();
+  const agentToolConfig = configResult.data?.agent?.[input.agent]?.tools ?? {};
+  const asyncagentsToolOverrides = {
+    asyncagents_task: agentToolConfig["asyncagents_task"] === true,
+    asyncagents_output: agentToolConfig["asyncagents_output"] === true,
+    asyncagents_cancel: agentToolConfig["asyncagents_cancel"] === true,
+    asyncagents_list: agentToolConfig["asyncagents_list"] === true,
+    asyncagents_clear: agentToolConfig["asyncagents_clear"] === true,
+  };
+
   client.session
     .promptAsync({
       path: { id: sessionID },
       body: {
         agent: input.agent,
-        tools: {
-          asyncagents_task: false,
-          asyncagents_output: false,
-          asyncagents_cancel: false,
-          asyncagents_list: false,
-          asyncagents_clear: false,
-        },
+        tools: asyncagentsToolOverrides,
         parts: [{ type: "text", text: input.prompt }],
       },
     })
