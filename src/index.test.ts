@@ -13,6 +13,9 @@ const createMockContext = (overrides = {}) => ({
       prompt: async () => ({}),
       promptAsync: async () => ({}),
     },
+    config: {
+      get: async () => ({ data: { agent: {} } }),
+    },
     ...overrides,
   },
   directory: "/test",
