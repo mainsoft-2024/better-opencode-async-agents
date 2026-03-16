@@ -13,18 +13,20 @@ function App() {
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [selectedHosts, setSelectedHosts] = useState<Set<string>>(new Set());
 
-  const { tasks, stats, isConnected, error: sseError } = useSSE();
+  const apiBaseUrl = (window as any).__BGAGENT_API_URL__ ?? window.location.origin;
+
+  const { tasks, stats, isConnected, error: sseError } = useSSE(apiBaseUrl);
   const {
     instances,
     isLoading: instancesLoading,
     error: instancesError,
     refresh: refreshInstances,
-  } = useInstances();
+  } = useInstances(apiBaseUrl);
   const {
     messages,
     isLoading: messagesLoading,
     error: messagesError,
-  } = useTaskMessages(selectedTaskId);
+  } = useTaskMessages(selectedTaskId, apiBaseUrl);
 
   useEffect(() => {
     setSelectedHosts((prev) => {
