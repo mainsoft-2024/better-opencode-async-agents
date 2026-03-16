@@ -123,7 +123,7 @@ export class StatusApiServer {
 
             // Dashboard static serving
             if (path === "/dashboard" || path.startsWith("/dashboard/")) {
-              const dashboardDir = resolve(import.meta.dirname ?? __dirname, "../dashboard");
+              const dashboardDir = resolve(import.meta.dirname ?? __dirname, "dashboard");
               if (!existsSync(dashboardDir)) {
                 return errorResponse("Dashboard not built. Run: bun run build:dashboard", 404);
               }
