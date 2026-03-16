@@ -1,47 +1,31 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useRef, useState } from "react";
+import { Virtuoso, type VirtuosoHandle } from "react-virtuoso";
+import { AnimatePresence, motion } from "framer-motion";
 import type { FilteredMessage } from "../types";
+import { MessageBubble } from "./conversation/MessageBubble";
+import { TypingIndicator } from "./conversation/TypingIndicator";
+import { groupMessages } from "../utils/groupMessages";
 
 type ConversationViewerProps = {
   messages: FilteredMessage[];
   isLoading: boolean;
   taskId: string | null;
+  taskStatus?: string;
 };
 
-const roleBadgeClass: Record<string, string> = {
-  user: "bg-blue-500/20 text-blue-300 border-blue-400/30",
-  assistant: "bg-green-500/20 text-green-300 border-green-400/30",
-  system: "bg-gray-500/20 text-gray-300 border-gray-400/30",
-};
+export function ConversationViewer({
+  messages,
+  isLoading,
+  taskId,
+  taskStatus,
+}: ConversationViewerProps) {
+  const virtuosoRef = useRef<VirtuosoHandle>(null);
+  const [isAtBottom, setIsAtBottom] = useState(true);
 
-function formatToolName(toolCall: any): string {
-  return toolCall?.toolName ?? toolCall?.name ?? toolCall?.tool ?? "unknown_tool";
-}
+  const normalizedMessages = messages ?? [];
+  const groups = groupMessages(normalizedMessages);
 
-function formatToolParams(toolCall: any): string {
-  const raw = toolCall?.params ?? toolCall?.arguments ?? toolCall?.input ?? toolCall?.args ?? {};
-
-  try {
-    const formatted = JSON.stringify(raw, null, 2);
-    if (!formatted) return "{}";
-    return formatted.length > 600 ? `${formatted.slice(0, 600)}...` : formatted;
-  } catch {
-    const fallback = String(raw);
-    return fallback.length > 600 ? `${fallback.slice(0, 600)}...` : fallback;
-  }
-}
-
-export function ConversationViewer({ messages, isLoading, taskId }: ConversationViewerProps) {
-  const endRef = useRef<HTMLDivElement | null>(null);
-
-  const normalizedMessages = useMemo(
-    () => messages ?? [],
-    [messages],
-  );
-
-  useEffect(() => {
-    endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
-  }, [normalizedMessages.length, taskId]);
-
+  // ── No task selected ──
   if (!taskId) {
     return (
       <div className="flex h-full items-center justify-center rounded-lg border border-gray-800 bg-gray-950 text-gray-400">
@@ -50,6 +34,7 @@ export function ConversationViewer({ messages, isLoading, taskId }: Conversation
     );
   }
 
+  // ── Loading ──
   if (isLoading) {
     return (
       <div className="flex h-full items-center justify-center rounded-lg border border-gray-800 bg-gray-950">
@@ -59,67 +44,82 @@ export function ConversationViewer({ messages, isLoading, taskId }: Conversation
   }
 
   return (
-    <div className="flex h-full flex-col rounded-lg border border-gray-800 bg-gray-950">
-      <div className="border-b border-gray-800 px-4 py-3 text-sm text-gray-300">Conversation</div>
-      <div className="flex-1 space-y-3 overflow-y-auto p-4">
-        {normalizedMessages.length === 0 ? (
-          <div className="rounded-md border border-dashed border-gray-700 bg-gray-900/60 p-4 text-sm text-gray-400">
-            No messages yet.
-          </div>
-        ) : (
-          normalizedMessages.map((message) => (
-            <article key={message.id} className="space-y-2 rounded-md border border-gray-800 bg-gray-900/70 p-3">
-              <div className="flex items-center gap-2">
-                <span
-                  className={`inline-flex rounded-full border px-2 py-0.5 text-xs font-medium ${roleBadgeClass[message.role] ?? "bg-gray-600/20 text-gray-200 border-gray-500/30"}`}
->
-                  {message.role}
-                </span>
-                <span className="text-xs text-gray-500">{message.type}</span>
-                {message.timestamp ? (
-                  <span className="ml-auto text-xs text-gray-500">
-                    {new Date(message.timestamp).toLocaleTimeString()}
-                  </span>
-                ) : null}
-              </div>
-
-              <pre className="whitespace-pre-wrap break-words text-sm text-gray-100">{message.content}</pre>
-
-              {message.thinking ? (
-                <details className="rounded-md border border-gray-700 bg-gray-800/60">
-                  <summary className="cursor-pointer px-3 py-2 text-xs font-medium text-gray-300">
-                    Thinking
-                  </summary>
-                  <pre className="whitespace-pre-wrap break-words border-t border-gray-700 px-3 py-2 text-xs text-gray-300">
-                    {message.thinking}
-                  </pre>
-                </details>
-              ) : null}
-
-              {message.toolCalls && message.toolCalls.length > 0 ? (
-                <details className="rounded-md border border-gray-700 bg-gray-800/60">
-                  <summary className="cursor-pointer px-3 py-2 text-xs font-medium text-gray-300">
-                    Tool Calls ({message.toolCalls.length})
-                  </summary>
-                  <div className="space-y-2 border-t border-gray-700 p-3">
-                    {message.toolCalls.map((toolCall, index) => (
-                      <details key={`${message.id}-tool-${index}`} className="rounded border border-gray-700 bg-gray-900/70">
-                        <summary className="cursor-pointer px-2 py-1.5 text-xs text-cyan-300">
-                          {formatToolName(toolCall)}
-                        </summary>
-                        <pre className="whitespace-pre-wrap break-words border-t border-gray-700 px-2 py-2 text-xs text-gray-300">
-                          {formatToolParams(toolCall)}
-                        </pre>
-                      </details>
-                    ))}
-                  </div>
-                </details>
-              ) : null}
-            </article>
-          ))
+    <div className="relative flex h-full flex-col rounded-lg border border-gray-800 bg-gray-950">
+      {/* Header bar */}
+      <div className="flex shrink-0 items-center gap-2 border-b border-gray-800 px-4 py-3">
+        <span className="truncate text-sm text-gray-300">Conversation</span>
+        {normalizedMessages.length > 0 && (
+          <span className="ml-auto shrink-0 rounded-full bg-gray-800 px-2 py-0.5 text-xs text-gray-400">
+            {normalizedMessages.length} msg{normalizedMessages.length !== 1 ? "s" : ""}
+          </span>
         )}
-        <div ref={endRef} />
       </div>
+
+      {/* Empty state */}
+      {groups.length === 0 ? (
+        <div className="flex flex-1 items-center justify-center text-sm text-gray-500">
+          No messages
+        </div>
+      ) : (
+        <Virtuoso
+          ref={virtuosoRef}
+          className="flex-1"
+          data={groups}
+          computeItemKey={(_, group) => group.messages[0].id}
+          followOutput="smooth"
+          initialTopMostItemIndex={groups.length - 1}
+          atBottomStateChange={(atBottom) => setIsAtBottom(atBottom)}
+          overscan={200}
+          itemContent={(index, group) => (
+            <div className="px-4 py-1.5">
+              <MessageBubble group={group} isLatest={index === groups.length - 1} />
+            </div>
+          )}
+          components={{
+            Footer: () =>
+              taskStatus === "running" ? (
+                <div className="px-4 py-3">
+                  <TypingIndicator />
+                </div>
+              ) : null,
+          }}
+        />
+      )}
+
+      {/* Scroll-to-latest floating button */}
+      <AnimatePresence>
+        {!isAtBottom && groups.length > 0 && (
+          <motion.button
+            key="scroll-btn"
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.8 }}
+            transition={{ duration: 0.15 }}
+            onClick={() =>
+              virtuosoRef.current?.scrollToIndex({
+                index: "LAST",
+                behavior: "smooth",
+              })
+            }
+            className="absolute bottom-4 right-4 flex h-9 w-9 items-center justify-center rounded-full border border-gray-700 bg-gray-800 text-gray-300 shadow-lg hover:bg-gray-700 hover:text-white"
+            aria-label="Scroll to latest"
+          >
+            {/* Down chevron */}
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 20 20"
+              fill="currentColor"
+              className="h-4 w-4"
+            >
+              <path
+                fillRule="evenodd"
+                d="M5.22 8.22a.75.75 0 0 1 1.06 0L10 11.94l3.72-3.72a.75.75 0 1 1 1.06 1.06l-4.25 4.25a.75.75 0 0 1-1.06 0L5.22 9.28a.75.75 0 0 1 0-1.06Z"
+                clipRule="evenodd"
+              />
+            </svg>
+          </motion.button>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

@@ -1,10 +1,9 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
-import type { BackgroundTask, SnapshotEvent, StatsResponse, TaskDeltaEvent } from "../types";
+import { useAgentStore } from "../stores/agentStore";
+import type { SnapshotEvent, TaskDeltaEvent } from "../types";
 
 type UseSSEResult = {
-  tasks: BackgroundTask[];
-  stats: StatsResponse | null;
   isConnected: boolean;
   error: string | null;
 };
@@ -15,8 +14,6 @@ const MAX_RECONNECT_DELAY_MS = 30000;
 export function useSSE(
   baseUrl: string = typeof window !== "undefined" ? window.location.origin : "",
 ): UseSSEResult {
-  const [tasksMap, setTasksMap] = useState<Map<string, BackgroundTask>>(new Map());
-  const [stats, setStats] = useState<StatsResponse | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -42,30 +39,17 @@ export function useSSE(
       }
     };
 
-    const upsertTask = (task: BackgroundTask) => {
-      setTasksMap((prev) => {
-        const next = new Map(prev);
-        next.set(task.sessionID, task);
-        return next;
-      });
-    };
-
     const handleSnapshot = (event: MessageEvent<string>) => {
       try {
         const payload = JSON.parse(event.data) as SnapshotEvent;
-        const nextMap = new Map<string, BackgroundTask>();
-        for (const task of payload.tasks) {
-          nextMap.set(task.sessionID, task);
-        }
-        setTasksMap(nextMap);
-        setStats(payload.stats);
+        useAgentStore.getState().upsertTasksFromSnapshot(payload.tasks, payload.stats);
         setError(null);
       } catch {
         setError("Failed to parse snapshot event");
       }
     };
 
-    const handleTaskDelta = (forcedStatus?: BackgroundTask["status"]) => {
+    const handleTaskDelta = (forcedStatus?: import("../types").BackgroundTask["status"]) => {
       return (event: MessageEvent<string>) => {
         try {
           const payload = JSON.parse(event.data) as TaskDeltaEvent;
@@ -77,7 +61,7 @@ export function useSSE(
             ? { ...payload.task, status: forcedStatus }
             : payload.task;
 
-          upsertTask(nextTask);
+          useAgentStore.getState().applyTaskEvent(nextTask);
           setError(null);
         } catch {
           setError("Failed to parse task event");
@@ -145,7 +129,5 @@ export function useSSE(
     };
   }, [baseUrl]);
 
-  const tasks = useMemo(() => Array.from(tasksMap.values()), [tasksMap]);
-
-  return { tasks, stats, isConnected, error };
+  return { isConnected, error };
 }

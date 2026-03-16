@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import type { DiscoveredInstance } from "../types";
+import { useAgentStore } from "../stores/agentStore";
 
 type InstancesResponse = {
   instances: DiscoveredInstance[];
@@ -38,8 +39,13 @@ function mergeInstancesWithCurrent(
   return Array.from(map.values());
 }
 
-export function useInstances(baseUrl = getDefaultBaseUrl()) {
-  const [instances, setInstances] = useState<DiscoveredInstance[]>(() => [getCurrentInstance()]);
+type UseInstancesResult = {
+  isLoading: boolean;
+  error: string | null;
+  refresh: () => Promise<void>;
+};
+
+export function useInstances(baseUrl = getDefaultBaseUrl()): UseInstancesResult {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -52,10 +58,11 @@ export function useInstances(baseUrl = getDefaultBaseUrl()) {
 
       const data = (await response.json()) as InstancesResponse;
       const current = getCurrentInstance();
-      setInstances(mergeInstancesWithCurrent(data.instances ?? [], current));
+      const mergedInstances = mergeInstancesWithCurrent(data.instances ?? [], current);
+      useAgentStore.getState().setInstances(mergedInstances);
       setError(null);
     } catch (err) {
-      setInstances([getCurrentInstance()]);
+      useAgentStore.getState().setInstances([getCurrentInstance()]);
       setError(err instanceof Error ? err.message : "Failed to fetch instances");
     } finally {
       setIsLoading(false);
@@ -73,5 +80,5 @@ export function useInstances(baseUrl = getDefaultBaseUrl()) {
     };
   }, [refresh]);
 
-  return { instances, isLoading, error, refresh };
+  return { isLoading, error, refresh };
 }

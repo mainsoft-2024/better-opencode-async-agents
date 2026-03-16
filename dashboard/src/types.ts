@@ -98,3 +98,55 @@ export type SSEEventType =
 export interface SnapshotEvent { tasks: BackgroundTask[]; stats: StatsResponse; }
 export interface TaskDeltaEvent { task: BackgroundTask; }
 export interface HeartbeatEvent { ts: string; }
+
+export interface MessageGroup {
+  speakerId: string;
+  speakerRole: string;
+  speakerName: string;
+  messages: FilteredMessage[];
+  startTime?: string;
+  endTime?: string;
+}
+
+export interface TimelineEvent {
+  id: string;
+  taskId: string;
+  messageId: string;
+  toolName: string;
+  status: "running" | "completed" | "error";
+  startTime: number;
+  endTime?: number;
+  duration?: number;
+  args?: string;
+  result?: string;
+}
+
+export interface FloatingPanelState {
+  id: string;
+  taskId: string;
+  position: { x: number; y: number };
+  size: { width: number; height: number };
+  minimized: boolean;
+  zIndex: number;
+}
+
+export interface AgentTreeNode {
+  task: BackgroundTask;
+  children: AgentTreeNode[];
+  depth: number;
+  isExpanded: boolean;
+}
+
+export interface AgentGraphNode {
+  id: string;
+  taskId: string;
+  label: string;
+  status: BackgroundTaskStatus;
+  agent: string;
+}
+
+export interface AgentGraphEdge {
+  id: string;
+  source: string;
+  target: string;
+}
