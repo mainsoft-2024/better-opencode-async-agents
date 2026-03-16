@@ -39,14 +39,12 @@ const notifyStateMap = new Map<string, NotifyState>();
  */
 function getPhaseIcon(task: BackgroundTask): string {
   const phase = task.progress?.phase ?? "waiting";
-  switch (phase) {
-    case "waiting":
-      return WAITING_FRAMES[task.progress?.waitingFrame ?? 0] ?? "◌";
-    case "streaming":
-      return STREAMING_FRAMES[task.progress?.streamFrame ?? 0] ?? "⠋";
-    case "tool":
-      return TOOL_FRAMES[task.progress?.toolFrame ?? 0] ?? "▱";
+  if (phase === "waiting") {
+    return WAITING_FRAMES[task.progress?.waitingFrame ?? 0] ?? "◌";
   }
+  const braille = STREAMING_FRAMES[task.progress?.brailleFrame ?? 0] ?? "⠋";
+  const bar = TOOL_FRAMES[task.progress?.progressBarFrame ?? 0] ?? "▰▱▱";
+  return `${braille} ${bar}`;
 }
 
 export function showProgressToast(
@@ -133,7 +131,7 @@ export function showProgressToast(
       new Date(task.startedAt),
       task.completedAt ? new Date(task.completedAt) : undefined
     );
-    const statusIcon = task.status === "completed" ? "✓" : task.status === "error" ? "✗" : "⊘";
+    const statusIcon = task.status === "completed" ? "✓ ▰▰▰" : task.status === "error" ? "✗ ▱▱▱" : "⊘";
     const callCount = task.progress?.toolCalls ?? 0;
     const callsStr = callCount > 0 ? ` 🔧${callCount}` : "";
     taskLines.push(
@@ -171,7 +169,7 @@ export function showProgressToast(
 
   const hasRunning = runningTasks.filter((t) => t.batchId === activeBatchId).length > 0;
   const firstRunningTask = runningTasks.filter((t) => t.batchId === activeBatchId)[0];
-  const titleIcon = firstRunningTask ? getPhaseIcon(firstRunningTask) : "⏳";
+  const titleIcon = firstRunningTask ? (STREAMING_FRAMES[firstRunningTask.progress?.brailleFrame ?? 0] ?? "⠋") : "⏳";
   const title = hasRunning
     ? TOAST_TITLES.backgroundTasksRunning(titleIcon)
     : TOAST_TITLES.tasksComplete;

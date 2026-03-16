@@ -24,6 +24,13 @@ const mockTasks: BackgroundTask[] = [
       lastTools: ["read", "grep"],
       lastUpdate: "2026-02-10T10:01:00.000Z",
       toolCallsByName: { read: 3, grep: 2 },
+      phase: "waiting",
+      textCharCount: 0,
+      streamFrame: 0,
+      brailleFrame: 0,
+      waitingFrame: 0,
+      toolFrame: 0,
+      progressBarFrame: 0,
     },
     isForked: false,
     resumeCount: 0,
@@ -45,6 +52,13 @@ const mockTasks: BackgroundTask[] = [
       lastTools: ["read"],
       lastUpdate: "2026-02-10T10:02:30.000Z",
       toolCallsByName: { read: 3 },
+      phase: "waiting",
+      textCharCount: 0,
+      streamFrame: 0,
+      brailleFrame: 0,
+      waitingFrame: 0,
+      toolFrame: 0,
+      progressBarFrame: 0,
     },
     isForked: true,
     resumeCount: 0,
@@ -66,6 +80,13 @@ const mockTasks: BackgroundTask[] = [
       lastTools: ["edit"],
       lastUpdate: "2026-02-10T10:04:00.000Z",
       toolCallsByName: { edit: 2 },
+      phase: "waiting",
+      textCharCount: 0,
+      streamFrame: 0,
+      brailleFrame: 0,
+      waitingFrame: 0,
+      toolFrame: 0,
+      progressBarFrame: 0,
     },
     error: "Session expired",
     isForked: false,
@@ -162,8 +183,8 @@ describe("StatusApiServer Integration", () => {
 
   beforeAll(async () => {
     // Use OS-assigned port to avoid conflicts
-    process.env.ASYNCAGENTS_API_PORT = "0";
-    process.env.ASYNCAGENTS_API_HOST = "127.0.0.1";
+    process.env.BGAGENT_API_PORT = "0";
+    process.env.BGAGENT_API_HOST = "127.0.0.1";
 
     const srv = await StatusApiServer.start(mockManager);
     if (!srv) throw new Error("Failed to start server");
@@ -174,8 +195,8 @@ describe("StatusApiServer Integration", () => {
   afterAll(async () => {
     await server.stop();
     // Clean up env
-    Reflect.deleteProperty(process.env, "ASYNCAGENTS_API_PORT");
-    Reflect.deleteProperty(process.env, "ASYNCAGENTS_API_HOST");
+    Reflect.deleteProperty(process.env, "BGAGENT_API_PORT");
+    Reflect.deleteProperty(process.env, "BGAGENT_API_HOST");
   });
 
   // =============================================================================

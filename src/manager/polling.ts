@@ -1,4 +1,4 @@
-import { COMPLETION_DISPLAY_DURATION, STREAM_CHARS_PER_FRAME, STREAMING_FRAMES, WAITING_FRAMES, WAITING_FRAME_INTERVAL, TOOL_FRAMES } from "../constants";
+import { COMPLETION_DISPLAY_DURATION, STREAMING_FRAMES, WAITING_FRAMES, WAITING_FRAME_INTERVAL, TOOL_FRAMES } from "../constants";
 import { setTaskStatus } from "../helpers";
 import type { BackgroundTask, OpencodeClient, TaskPhase } from "../types";
 
@@ -245,11 +245,11 @@ export async function updateTaskProgress(
     //   - No assistant content at all → waiting
     //   - Tool count increased since last poll → tool (actively calling tools)
     //   - Otherwise → streaming (LLM generating text / idle between actions)
-    const prevToolCalls = task.progress?.toolCalls ?? 0;
+    const prevToolCallsForPhase = task.progress?.toolCalls ?? 0;
     let phase: TaskPhase;
     if (!hasAnyAssistantContent) {
       phase = "waiting";
-    } else if (toolCalls > prevToolCalls) {
+    } else if (toolCalls > prevToolCallsForPhase) {
       phase = "tool";
     } else {
       phase = "streaming";
@@ -267,16 +267,28 @@ export async function updateTaskProgress(
         streamFrame: 0,
         waitingFrame: 0,
         toolFrame: 0,
+        brailleFrame: 0,
+        progressBarFrame: 0,
       };
     }
 
-    // Advance streaming frame deterministically from total text output.
-    // Using total chars avoids losing remainder when deltaChars < threshold.
-    if (phase === "streaming") {
-      task.progress.streamFrame = Math.floor(totalTextCharCount / STREAM_CHARS_PER_FRAME) % STREAMING_FRAMES.length;
+    // Auto-advance braille spinner every poll for active phases.
+    if (phase !== "waiting") {
+      task.progress.brailleFrame = ((task.progress.brailleFrame ?? 0) + 1) % STREAMING_FRAMES.length;
     }
 
-    // Advance waiting/tool frames by 1 per poll when in those phases
+    // Advance progress bar on state-change events only.
+    const prevPhase = task.progress._prevPhase;
+    const prevToolCalls = task.progress.toolCalls;
+    const prevTextChars = task.progress.textCharCount;
+    const hasEvent =
+      phase !== prevPhase || toolCalls !== prevToolCalls || totalTextCharCount !== prevTextChars;
+    if (hasEvent && phase !== "waiting") {
+      task.progress.progressBarFrame = ((task.progress.progressBarFrame ?? 0) + 1) % TOOL_FRAMES.length;
+    }
+    task.progress._prevPhase = phase;
+
+    // Advance waiting frame by poll interval when waiting.
     if (phase === "waiting") {
       const waitPollCount = (task.progress._waitPollCount ?? 0) + 1;
       task.progress._waitPollCount = waitPollCount;
@@ -286,9 +298,6 @@ export async function updateTaskProgress(
       }
     } else {
       task.progress._waitPollCount = 0;
-    }
-    if (phase === "tool") {
-      task.progress.toolFrame = ((task.progress.toolFrame ?? 0) + 1) % TOOL_FRAMES.length;
     }
 
     // Update all progress fields

@@ -23,9 +23,9 @@ describe("StatusApiServer lifecycle", () => {
 
   beforeEach(() => {
     // Save original env vars
-    originalEnv.ASYNCAGENTS_API_ENABLED = process.env.ASYNCAGENTS_API_ENABLED;
-    originalEnv.ASYNCAGENTS_API_PORT = process.env.ASYNCAGENTS_API_PORT;
-    originalEnv.ASYNCAGENTS_API_HOST = process.env.ASYNCAGENTS_API_HOST;
+    originalEnv.BGAGENT_API_ENABLED = process.env.BGAGENT_API_ENABLED;
+    originalEnv.BGAGENT_API_PORT = process.env.BGAGENT_API_PORT;
+    originalEnv.BGAGENT_API_HOST = process.env.BGAGENT_API_HOST;
   });
 
   afterEach(async () => {
@@ -36,23 +36,23 @@ describe("StatusApiServer lifecycle", () => {
     }
 
     // Restore original env vars
-    const { ASYNCAGENTS_API_ENABLED, ASYNCAGENTS_API_PORT, ASYNCAGENTS_API_HOST } = originalEnv;
-    if (ASYNCAGENTS_API_ENABLED === undefined) {
-      process.env.ASYNCAGENTS_API_ENABLED = undefined;
+    const { BGAGENT_API_ENABLED, BGAGENT_API_PORT, BGAGENT_API_HOST } = originalEnv;
+    if (BGAGENT_API_ENABLED === undefined) {
+      process.env.BGAGENT_API_ENABLED = undefined;
     } else {
-      process.env.ASYNCAGENTS_API_ENABLED = ASYNCAGENTS_API_ENABLED;
+      process.env.BGAGENT_API_ENABLED = BGAGENT_API_ENABLED;
     }
 
-    if (ASYNCAGENTS_API_PORT === undefined) {
-      process.env.ASYNCAGENTS_API_PORT = undefined;
+    if (BGAGENT_API_PORT === undefined) {
+      process.env.BGAGENT_API_PORT = undefined;
     } else {
-      process.env.ASYNCAGENTS_API_PORT = ASYNCAGENTS_API_PORT;
+      process.env.BGAGENT_API_PORT = BGAGENT_API_PORT;
     }
 
-    if (ASYNCAGENTS_API_HOST === undefined) {
-      process.env.ASYNCAGENTS_API_HOST = undefined;
+    if (BGAGENT_API_HOST === undefined) {
+      process.env.BGAGENT_API_HOST = undefined;
     } else {
-      process.env.ASYNCAGENTS_API_HOST = ASYNCAGENTS_API_HOST;
+      process.env.BGAGENT_API_HOST = BGAGENT_API_HOST;
     }
   });
 
@@ -111,7 +111,7 @@ describe("StatusApiServer lifecycle", () => {
 
     try {
       // Set env to use the blocked port
-      process.env.ASYNCAGENTS_API_PORT = String(blockedPort);
+      process.env.BGAGENT_API_PORT = String(blockedPort);
 
       const manager = createMockManager();
       server = await StatusApiServer.start(manager);
@@ -131,8 +131,8 @@ describe("StatusApiServer lifecycle", () => {
   // Environment Variable Configuration
   // ===========================================================================
 
-  test("ASYNCAGENTS_API_ENABLED=false returns null", async () => {
-    process.env.ASYNCAGENTS_API_ENABLED = "false";
+  test("BGAGENT_API_ENABLED=false returns null", async () => {
+    process.env.BGAGENT_API_ENABLED = "false";
 
     const manager = createMockManager();
     const result = await StatusApiServer.start(manager);
@@ -140,7 +140,7 @@ describe("StatusApiServer lifecycle", () => {
     expect(result).toBeNull();
   });
 
-  test("ASYNCAGENTS_API_PORT overrides default port", async () => {
+  test("BGAGENT_API_PORT overrides default port", async () => {
     // Use a high port that's unlikely to be in use
     const customPort = 55666;
 
@@ -157,7 +157,7 @@ describe("StatusApiServer lifecycle", () => {
       // Port might not have been in use
     }
 
-    process.env.ASYNCAGENTS_API_PORT = String(customPort);
+    process.env.BGAGENT_API_PORT = String(customPort);
 
     const manager = createMockManager();
     server = await StatusApiServer.start(manager);

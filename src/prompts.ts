@@ -29,7 +29,7 @@ Arguments:
 IMPORTANT: You'll be informed when each task is complete. DO NOT assume all tasks were done, check again if all agents you need are complete.
 
   Returns immediately with task ID. The task will run in background and notify you when complete.
-Optionally use \`asyncagents_output\` later if you need to check results manually with or without blocking.`,
+Optionally use \`bgagent_output\` later if you need to check results manually with or without blocking.`,
 
   backgroundList: `List all background tasks.
 
@@ -114,7 +114,7 @@ export const ERROR_MESSAGES = {
   // Task validation errors
   taskNotFound: (taskId: string) => `Task not found: ${taskId}`,
   taskNotFoundWithHint: (taskId: string) =>
-    `Task not found: ${taskId}. Use asyncagents_list to see available tasks.`,
+    `Task not found: ${taskId}. Use bgagent_list to see available tasks.`,
 
   // Resume validation errors
   taskCurrentlyResuming:
@@ -122,7 +122,7 @@ export const ERROR_MESSAGES = {
   onlyCompletedCanResume: (currentStatus: string) =>
     `Only completed tasks can be resumed. Current status: ${currentStatus}`,
   sessionExpired:
-    "Session expired or was deleted. Start a new asyncagents_task to continue.",
+    "Session expired or was deleted. Start a new bgagent_task to continue.",
 
   // Launch validation errors
   agentRequired: "Agent parameter is required. Specify which agent to use.",
@@ -224,20 +224,20 @@ export const NOTIFICATION_MESSAGES = {
 
 export const SYSTEM_HINT_MESSAGES = {
   runningTasksHint: (taskId: string) =>
-    `If you need results immediately, use asyncagents_output(task_id="${taskId}").
+    `If you need results immediately, use bgagent_output(task_id="${taskId}").
 You can continue working or just say 'waiting' and halt.
 WATCH OUT for leftovers, you will likely WANT to wait for all agents to complete.`,
 
   allTasksDoneHint: (totalCount: number) =>
     `All ${totalCount} tasks finished.
-Use asyncagents_output tools to see agent responses.`,
+Use bgagent_output tools to see agent responses.`,
 
   errorHint: (taskId: string, errorMessage: string) =>
     `Task failed: ${errorMessage}
-Use asyncagents_output(task_id="${taskId}") for details.`,
+Use bgagent_output(task_id="${taskId}") for details.`,
 
   resumeHint: (taskId: string) =>
-    `Use asyncagents_output(task_id="${taskId}") for full response.`,
+    `Use bgagent_output(task_id="${taskId}") for full response.`,
 };
 
 // =============================================================================
@@ -250,7 +250,8 @@ export const TOAST_TITLES = {
   taskCancelled: "⊘ Task cancelled",
   backgroundTasksRunning: (spinner: string) => {
     const prefix = process.env.OPENCODE_BGAGENT_PREFIX;
-    const baseText = "AsyncAgents";
+    const client = process.env.ASYNCAGENTS_CLIENT;
+    const baseText = client === "SLASH" ? "SlashAgents" : "AsyncAgents";
     return prefix ? `⛭ ${prefix} ${baseText}` : `⛭ ${baseText}`;
   },
   tasksComplete: "✓ Tasks complete",

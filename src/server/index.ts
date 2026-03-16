@@ -35,7 +35,7 @@ export class StatusApiServer {
    */
   static async start(manager: any): Promise<StatusApiServer | null> {
     // Check if disabled
-    if (process.env.ASYNCAGENTS_API_ENABLED === "false") {
+    if (process.env.BGAGENT_API_ENABLED === "false") {
       return null;
     }
 
@@ -46,10 +46,10 @@ export class StatusApiServer {
 
   private async bind(): Promise<void> {
     const desiredPort = Number.parseInt(
-      process.env.ASYNCAGENTS_API_PORT ?? String(DEFAULT_API_PORT),
+      process.env.BGAGENT_API_PORT ?? String(DEFAULT_API_PORT),
       10
     );
-    const host = process.env.ASYNCAGENTS_API_HOST ?? DEFAULT_API_HOST;
+    const host = process.env.BGAGENT_API_HOST ?? DEFAULT_API_HOST;
 
     // Build the data provider for SSE
     const dataProvider: SSEDataProvider = {
@@ -198,7 +198,7 @@ export class StatusApiServer {
   }
 
   getUrl(): string {
-    const host = process.env.ASYNCAGENTS_API_HOST ?? DEFAULT_API_HOST;
+    const host = process.env.BGAGENT_API_HOST ?? DEFAULT_API_HOST;
     return `http://${host}:${this.getPort()}`;
   }
 

@@ -6,6 +6,7 @@ export const COMPLETION_DISPLAY_DURATION = 10000;
 // Phase-specific animation frames
 export const WAITING_FRAMES = ["○", "◉"];
 export const WAITING_FRAME_INTERVAL = 5; // 5 polls × 100ms = 500ms per frame
+export const BRAILLE_FRAME_INTERVAL = 1; // 1 poll × 100ms = ~100ms per frame
 export const STREAMING_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
 export const TOOL_FRAMES = ["▰▱▱", "▰▰▱", "▰▰▰", "▱▰▰", "▱▱▰", "▱▱▱"];
 /** @deprecated Use STREAMING_FRAMES instead */

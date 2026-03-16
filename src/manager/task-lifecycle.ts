@@ -136,8 +136,10 @@ export async function launchTask(
       phase: "waiting",
       textCharCount: 0,
       streamFrame: 0,
+      brailleFrame: 0,
       waitingFrame: 0,
       toolFrame: 0,
+      progressBarFrame: 0,
     },
   };
 
@@ -154,17 +156,17 @@ export async function launchTask(
 
   startPolling();
 
-  // Fetch agent config to check for explicit asyncagents tool overrides.
-  // Default: all asyncagents tools are blocked for spawned agents.
-  // Override: if the agent's config explicitly sets an asyncagents tool to true, honor it.
+  // Fetch agent config to check for explicit bgagent tool overrides.
+  // Default: all bgagent tools are blocked for spawned agents.
+  // Override: if the agent's config explicitly sets a bgagent tool to true, honor it.
   const configResult = await client.config.get();
   const agentToolConfig = configResult.data?.agent?.[input.agent]?.tools ?? {};
-  const asyncagentsToolOverrides = {
-    asyncagents_task: agentToolConfig["asyncagents_task"] === true,
-    asyncagents_output: agentToolConfig["asyncagents_output"] === true,
-    asyncagents_cancel: agentToolConfig["asyncagents_cancel"] === true,
-    asyncagents_list: agentToolConfig["asyncagents_list"] === true,
-    asyncagents_clear: agentToolConfig["asyncagents_clear"] === true,
+  const bgagentToolOverrides = {
+    bgagent_task: agentToolConfig["bgagent_task"] === true,
+    bgagent_output: agentToolConfig["bgagent_output"] === true,
+    bgagent_cancel: agentToolConfig["bgagent_cancel"] === true,
+    bgagent_list: agentToolConfig["bgagent_list"] === true,
+    bgagent_clear: agentToolConfig["bgagent_clear"] === true,
   };
 
   client.session
@@ -172,7 +174,7 @@ export async function launchTask(
       path: { id: sessionID },
       body: {
         agent: input.agent,
-        tools: asyncagentsToolOverrides,
+        tools: bgagentToolOverrides,
         parts: [{ type: "text", text: input.prompt }],
       },
     })

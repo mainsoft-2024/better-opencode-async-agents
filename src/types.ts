@@ -17,6 +17,9 @@ export interface TaskProgress {
   phase: TaskPhase;
   textCharCount: number;
   streamFrame: number;
+  brailleFrame: number;
+  progressBarFrame: number;
+  _prevPhase?: TaskPhase;
   waitingFrame: number;
   toolFrame: number;
   _waitPollCount?: number;

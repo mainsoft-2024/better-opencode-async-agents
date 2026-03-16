@@ -36,11 +36,11 @@ export default async function plugin(ctx: PluginInput): Promise<Hooks> {
 
   return {
     tool: {
-      asyncagents_task: createBackgroundTask(manager),
-      asyncagents_output: createBackgroundOutput(manager),
-      asyncagents_cancel: createBackgroundCancel(manager),
-      asyncagents_list: createBackgroundList(manager),
-      asyncagents_clear: createBackgroundClear(manager),
+      bgagent_task: createBackgroundTask(manager),
+      bgagent_output: createBackgroundOutput(manager),
+      bgagent_cancel: createBackgroundCancel(manager),
+      bgagent_list: createBackgroundList(manager),
+      bgagent_clear: createBackgroundClear(manager),
     },
     event: async () => {
       // Event handling is started in the manager constructor
