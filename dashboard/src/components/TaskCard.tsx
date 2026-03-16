@@ -1,3 +1,4 @@
+import { useInstancesById } from "../stores/agentStore";
 import type { BackgroundTask, BackgroundTaskStatus } from "../types";
 
 type TaskCardProps = {
@@ -33,6 +34,10 @@ function formatDuration(startedAt: string, completedAt?: string, isRunning?: boo
 }
 
 export function TaskCard({ task, isSelected, onClick }: TaskCardProps) {
+  const instancesById = useInstancesById();
+  const instanceInfo = task.instanceId ? instancesById[task.instanceId] : undefined;
+  const instanceColor = instanceInfo?.color;
+  const instanceName = instanceInfo?.instanceName ?? task.instanceId;
   const toolCalls = task.progress?.toolCalls ?? 0;
   const isRunning = task.status === "running";
   const duration = formatDuration(task.startedAt, task.completedAt, isRunning);
@@ -46,6 +51,7 @@ export function TaskCard({ task, isSelected, onClick }: TaskCardProps) {
           ? "border-blue-400/70 bg-blue-500/10"
           : "border-gray-700 bg-gray-900 hover:border-gray-600 hover:bg-gray-800/80"
       }`}
+      style={instanceColor ? { borderLeftColor: instanceColor, borderLeftWidth: '3px', borderLeftStyle: 'solid' } : undefined}
     >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
@@ -58,6 +64,14 @@ export function TaskCard({ task, isSelected, onClick }: TaskCardProps) {
             <span className="rounded-full border border-gray-600 bg-gray-800 px-2 py-0.5 text-xs text-gray-200">
               {task.agent}
             </span>
+            {instanceName ? (
+              <span
+                className="rounded-full border px-2 py-0.5 text-xs font-medium"
+                style={instanceColor ? { borderColor: instanceColor, color: instanceColor, backgroundColor: instanceColor + '22' } : { borderColor: '#6b7280', color: '#d1d5db' }}
+              >
+                {instanceName}
+              </span>
+            ) : null}
             {task.pendingResume ? (
               <span className="rounded-full border border-amber-400/40 bg-amber-500/20 px-2 py-0.5 text-xs text-amber-200">
                 pending resume

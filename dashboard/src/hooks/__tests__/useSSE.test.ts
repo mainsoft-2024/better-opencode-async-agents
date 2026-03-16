@@ -76,8 +76,8 @@ describe('useSSE', () => {
 
     const state = useAgentStore.getState();
     expect(Object.keys(state.tasksById)).toHaveLength(2);
-    expect(state.tasksById['abc'].sessionID).toBe('abc');
-    expect(state.tasksById['def'].sessionID).toBe('def');
+    expect(state.tasksById['local:abc'].sessionID).toBe('abc');
+    expect(state.tasksById['local:def'].sessionID).toBe('def');
     expect(state.stats).toEqual(stats);
     expect(result.current.error).toBeNull();
   });
@@ -102,7 +102,7 @@ describe('useSSE', () => {
     });
 
     const state = useAgentStore.getState();
-    expect(state.tasksById['xyz'].status).toBe('completed');
+    expect(state.tasksById['local:xyz'].status).toBe('completed');
     expect(result.current.error).toBeNull();
   });
 
@@ -129,7 +129,7 @@ describe('useSSE', () => {
     const state = useAgentStore.getState();
     // Both cached task and new task should be in the store
     expect(state.tasksById['cached']).toBeDefined();
-    expect(state.tasksById['newone']).toBeDefined();
+    expect(state.tasksById['local:newone']).toBeDefined();
     expect(Object.keys(state.tasksById)).toHaveLength(2);
   });
 });

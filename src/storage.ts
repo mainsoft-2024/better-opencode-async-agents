@@ -165,6 +165,9 @@ export async function writeServerInfo(info: {
   startedAt: string;
   url: string;
   version: string;
+  instanceId: string;
+  instanceName: string;
+  directory: string;
 }): Promise<void> {
   try {
     await ensureStorageDir();
@@ -200,6 +203,9 @@ export async function readServerInfo(): Promise<{
   startedAt: string;
   url: string;
   version: string;
+  instanceId: string;
+  instanceName: string;
+  directory: string;
 } | null> {
   try {
     // Try Bun first
@@ -216,6 +222,9 @@ export async function readServerInfo(): Promise<{
         startedAt: string;
         url: string;
         version: string;
+        instanceId: string;
+        instanceName: string;
+        directory: string;
       };
     }
 
@@ -229,6 +238,9 @@ export async function readServerInfo(): Promise<{
         startedAt: string;
         url: string;
         version: string;
+        instanceId: string;
+        instanceName: string;
+        directory: string;
       };
     }
 

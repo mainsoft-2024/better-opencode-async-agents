@@ -96,6 +96,12 @@ export type DiscoveredInstance = {
   host: string;
   port: number;
   metadata: Record<string, string>;
+  /** Unique instance ID (from metadata.instanceId) */
+  instanceId?: string;
+  /** Human-readable instance name derived from working directory (from metadata.instanceName) */
+  instanceName?: string;
+  /** Working directory of the OpenCode instance (from metadata.directory) */
+  directory?: string;
 };
 
 

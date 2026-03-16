@@ -3,13 +3,14 @@ import type { BackgroundTask, MessageFilter, FilteredMessage } from "../types";
 import { errorResponse, jsonResponse } from "./cors";
 import type {
   HealthResponse,
+  InfoResponse,
   PaginatedTasksResponse,
   StatsResponse,
   TaskGroupResponse,
   TaskLogsResponse,
   MessagesResponse,
   InstancesResponse,
-} from "./types";
+}from "./types";
 
 // =============================================================================
 // Route Manager Interface
@@ -313,4 +314,13 @@ export function handleTaskGroup(req: Request, manager: RouteManager, groupId: st
     },
   };
   return jsonResponse(body);
+}
+
+
+// =============================================================================
+// Info
+// =============================================================================
+
+export function handleInfo(_req: Request, instanceMeta: InfoResponse): Response {
+  return jsonResponse(instanceMeta);
 }

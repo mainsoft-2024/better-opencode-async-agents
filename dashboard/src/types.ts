@@ -34,7 +34,19 @@ export interface BackgroundTask {
   resumeCount: number;
   isForked: boolean;
   pendingResume?: { prompt: string; queuedAt: string };
+  instanceId?: string;
+  instanceName?: string;
 }
+
+export type InstanceInfo = {
+  instanceId: string;
+  instanceName: string;
+  directory: string;
+  url: string;
+  color: string;
+};
+
+export type ConnectionStatus = 'connecting' | 'connected' | 'disconnected' | 'error';
 
 export interface MessageFilter {
   fullSession?: boolean;
@@ -60,6 +72,10 @@ export type DiscoveredInstance = {
   host: string;
   port: number;
   metadata: Record<string, string>;
+  instanceId?: string;
+  instanceName?: string;
+  directory?: string;
+  url?: string;
 };
 
 export interface PaginatedTasksResponse {
@@ -95,9 +111,9 @@ export type SSEEventType =
   | "snapshot" | "task.created" | "task.updated"
   | "task.completed" | "task.error" | "task.cancelled" | "heartbeat";
 
-export interface SnapshotEvent { tasks: BackgroundTask[]; stats: StatsResponse; }
+export interface SnapshotEvent { tasks: BackgroundTask[]; stats: StatsResponse; instanceId?: string; instanceName?: string; }
 export interface TaskDeltaEvent { task: BackgroundTask; }
-export interface HeartbeatEvent { ts: string; }
+export interface HeartbeatEvent { ts: string; instanceId?: string; instanceName?: string; }
 
 export interface MessageGroup {
   speakerId: string;

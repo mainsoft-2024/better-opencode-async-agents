@@ -12,6 +12,7 @@ import {
   handleTaskLogs,
   handleTaskMessages,
   handleInstances,
+  handleInfo,
 } from "./routes";
 import { SSEBroadcaster, type SSEDataProvider, handleSSERequest } from "./sse";
 import { InstanceDiscovery } from "./discovery";
@@ -23,6 +24,9 @@ export class StatusApiServer {
   private unsubscribe: (() => void) | null = null;
   private startedAt: string;
   private discovery: InstanceDiscovery;
+  private instanceId = ""
+  private instanceName = ""
+  private directory = ""
 
   private constructor(
     private manager: RouteManager & {
@@ -38,13 +42,18 @@ export class StatusApiServer {
   /**
    * Start the API server. Returns null if disabled via env var.
    */
-  static async start(manager: any): Promise<StatusApiServer | null> {
+  static async start(manager: any, instanceMeta?: { instanceId: string; instanceName: string; directory: string }): Promise<StatusApiServer | null> {
     // Check if disabled
     if (process.env.BGAGENT_API_ENABLED === "false") {
       return null;
     }
 
     const instance = new StatusApiServer(manager);
+    if (instanceMeta) {
+      instance.instanceId = instanceMeta.instanceId;
+      instance.instanceName = instanceMeta.instanceName;
+      instance.directory = instanceMeta.directory;
+    }
     await instance.bind();
     return instance;
   }
@@ -60,11 +69,17 @@ export class StatusApiServer {
     const dataProvider: SSEDataProvider = {
       getAllTasks: () => this.manager.getAllTasks(),
       buildStats: () => this.buildStatsData(),
+      instanceId: this.instanceId,
+      instanceName: this.instanceName,
     };
 
     const broadcaster = this.broadcaster;
     const manager = this.manager;
     const discovery = this.discovery;
+    const instanceId = this.instanceId;
+    const instanceName = this.instanceName;
+    const directory = this.directory;
+    const startedAt = this.startedAt;
 
     // Try ports with retry
     let lastError: Error | null = null;
@@ -89,6 +104,7 @@ export class StatusApiServer {
             if (path === "/v1/tasks") return handleTaskList(req, manager);
             if (path === "/v1/events") return handleSSERequest(req, broadcaster, dataProvider);
             if (path === "/v1/instances") return handleInstances(req, discovery);
+            if (path === "/v1/info") return handleInfo(req, { instanceId, instanceName, directory, port, pid: process.pid, startedAt, version: "1.0.0" });
 
             // Match /v1/tasks/:id/logs
             const logsMatch = path.match(/^\/v1\/tasks\/([^/]+)\/logs$/);
@@ -139,7 +155,7 @@ export class StatusApiServer {
     // Subscribe to manager task events for SSE broadcasting
     if (this.manager.onTaskEvent) {
       this.unsubscribe = this.manager.onTaskEvent((eventType, task) => {
-        this.broadcaster.broadcast(eventType as any, { task });
+        this.broadcaster.broadcast(eventType as any, { task, instanceId: this.instanceId, instanceName: this.instanceName });
       });
     }
 
@@ -153,6 +169,9 @@ export class StatusApiServer {
         startedAt: this.startedAt,
         url,
         version: "1.0.0",
+        instanceId: this.instanceId,
+        instanceName: this.instanceName,
+        directory: this.directory,
       });
     } catch {
       // Non-fatal — discovery file is best-effort
@@ -164,6 +183,9 @@ export class StatusApiServer {
         startedAt: this.startedAt,
         url,
         version: "1.0.0",
+        instanceId: this.instanceId,
+        instanceName: this.instanceName,
+        directory: this.directory,
       });
     } catch {
       // Non-fatal — service discovery is best-effort

@@ -4,6 +4,7 @@ import type { BackgroundTask } from "../../types";
 import {
   type RouteManager,
   handleHealth,
+  handleInfo,
   handleStats,
   handleTaskDetail,
   handleTaskGroup,
@@ -973,5 +974,37 @@ describe("handleTaskGroup", () => {
     const body = await response.json();
 
     expect(body.stats.duration).toBe(0);
+  });
+});
+
+
+// =============================================================================
+// handleInfo Tests
+// =============================================================================
+
+describe("handleInfo", () => {
+  test("returns correct shape with all fields", async () => {
+    const instanceMeta = {
+      instanceId: "inst_abc123",
+      instanceName: "my-project",
+      directory: "/Users/test/my-project",
+      port: 5165,
+      pid: 12345,
+      startedAt: "2024-01-01T10:00:00.000Z",
+      version: "0.9.0",
+    };
+    const request = new Request("http://localhost:5165/v1/info");
+
+    const response = handleInfo(request, instanceMeta);
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.instanceId).toBe("inst_abc123");
+    expect(body.instanceName).toBe("my-project");
+    expect(body.directory).toBe("/Users/test/my-project");
+    expect(body.port).toBe(5165);
+    expect(body.pid).toBe(12345);
+    expect(body.startedAt).toBe("2024-01-01T10:00:00.000Z");
+    expect(body.version).toBe("0.9.0");
   });
 });

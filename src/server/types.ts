@@ -115,4 +115,17 @@ export interface ServerInfo {
   startedAt: string; // ISO 8601
   url: string;
   version: string;
+  instanceId: string;
+  instanceName: string;
+  directory: string;
+}
+
+export interface InfoResponse {
+  instanceId: string;
+  instanceName: string;
+  directory: string;
+  port: number;
+  pid: number;
+  startedAt: string;
+  version: string;
 }

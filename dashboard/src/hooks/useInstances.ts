@@ -12,8 +12,8 @@ function getDefaultBaseUrl(): string {
   return window.location.origin;
 }
 
-function getCurrentInstance(): DiscoveredInstance {
-  const { hostname, port, protocol } = new URL(window.location.origin);
+function getCurrentInstance(baseUrl: string): DiscoveredInstance {
+  const { hostname, port, protocol } = new URL(baseUrl);
   const resolvedPort = port === "" ? (protocol === "https:" ? 443 : 80) : Number(port);
 
   return {
@@ -21,13 +21,17 @@ function getCurrentInstance(): DiscoveredInstance {
     host: hostname,
     port: resolvedPort,
     metadata: {},
+    instanceId: "local",
+    instanceName: "Current Instance",
+    directory: "",
+    url: baseUrl,
   };
 }
 
 function mergeInstancesWithCurrent(
   instances: DiscoveredInstance[],
   current: DiscoveredInstance,
- ): DiscoveredInstance[] {
+): DiscoveredInstance[] {
   const map = new Map<string, DiscoveredInstance>();
 
   for (const instance of instances) {
@@ -57,12 +61,23 @@ export function useInstances(baseUrl = getDefaultBaseUrl()): UseInstancesResult 
       }
 
       const data = (await response.json()) as InstancesResponse;
-      const current = getCurrentInstance();
-      const mergedInstances = mergeInstancesWithCurrent(data.instances ?? [], current);
+      const current = getCurrentInstance(baseUrl);
+      const rawInstances = data.instances ?? [];
+
+      // Enrich discovered instances with derived fields
+      const enriched: DiscoveredInstance[] = rawInstances.map((inst) => ({
+        ...inst,
+        instanceId: inst.metadata?.instanceId ?? inst.name,
+        instanceName: inst.metadata?.instanceName ?? inst.name,
+        directory: inst.metadata?.directory ?? "",
+        url: `http://${inst.host}:${inst.port}`,
+      }));
+
+      const mergedInstances = mergeInstancesWithCurrent(enriched, current);
       useAgentStore.getState().setInstances(mergedInstances);
       setError(null);
     } catch (err) {
-      useAgentStore.getState().setInstances([getCurrentInstance()]);
+      useAgentStore.getState().setInstances([getCurrentInstance(baseUrl)]);
       setError(err instanceof Error ? err.message : "Failed to fetch instances");
     } finally {
       setIsLoading(false);

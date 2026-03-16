@@ -1,3 +1,4 @@
+import { useConnectionStatusMap, useInstancesById } from "../stores/agentStore";
 import type { StatsResponse } from "../types";
 
 type StatusBarProps = {
@@ -29,6 +30,20 @@ function StatItem({ label, value, tone = "default" }: StatItemProps) {
 }
 
 export function StatusBar({ stats, isConnected, instanceCount }: StatusBarProps) {
+  const connectionStatus = useConnectionStatusMap();
+  const instancesById = useInstancesById();
+  const totalInstances = Object.keys(instancesById).length;
+  const connectedCount = Object.values(connectionStatus).filter((s) => s === 'connected').length;
+  const hasMultiInstance = totalInstances > 0;
+
+  // Determine dot color for multi-instance mode
+  const dotColor = hasMultiInstance
+    ? connectedCount === totalInstances
+      ? 'bg-emerald-400'
+      : connectedCount > 0
+        ? 'bg-yellow-400'
+        : 'bg-red-400'
+    : isConnected ? 'bg-emerald-400' : 'bg-red-400';
   const totalTasks = stats?.totalTasks ?? 0;
   const activeTasks = stats?.activeTasks ?? 0;
   const errorTasks = stats?.byStatus.error ?? 0;
@@ -39,13 +54,14 @@ export function StatusBar({ stats, isConnected, instanceCount }: StatusBarProps)
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <span
-            className={`h-2.5 w-2.5 rounded-full ${isConnected ? "bg-emerald-400" : "bg-red-400"}`}
->
-          </span>
+            className={`h-2.5 w-2.5 rounded-full ${dotColor}`}
+          />
           <span className="text-sm font-medium">
-            {isConnected ? "Connected" : "Disconnected"}
+            {hasMultiInstance
+              ? `${connectedCount}/${totalInstances} instances connected`
+              : isConnected ? 'Connected' : 'Disconnected'}
           </span>
-          <span className="text-xs text-gray-400">Instances: {instanceCount}</span>
+
         </div>
 
         <div className="flex flex-wrap items-center gap-2">

@@ -62,9 +62,9 @@ describe('agentStore', () => {
     useAgentStore.getState().upsertTasksFromSnapshot([olderTask, newerTask], stats);
 
     const state = useAgentStore.getState();
-    expect(Object.keys(state.tasksById)).toEqual(['task-old', 'task-new']);
-    expect(state.tasksById['stale-task']).toBeUndefined();
-    expect(state.taskOrder).toEqual(['task-new', 'task-old']);
+    expect(Object.keys(state.tasksById)).toEqual(expect.arrayContaining(['local:task-old', 'local:task-new']));
+    expect(state.tasksById['local:stale-task']).toBeUndefined();
+    expect(state.taskOrder).toEqual(['local:task-new', 'local:task-old']);
     expect(state.stats).toEqual(stats);
   });
 
@@ -78,10 +78,10 @@ describe('agentStore', () => {
     useAgentStore.getState().applyTaskEvent(updatedFirstTask);
 
     const state = useAgentStore.getState();
-    expect(state.tasksById['task-1'].description).toBe('first-updated');
-    expect(state.tasksById['task-2'].description).toBe('second');
-    expect(state.taskOrder).toContain('task-1');
-    expect(state.taskOrder).toContain('task-2');
+    expect(state.tasksById['local:task-1'].description).toBe('first-updated');
+    expect(state.tasksById['local:task-2'].description).toBe('second');
+    expect(state.taskOrder).toContain('local:task-1');
+    expect(state.taskOrder).toContain('local:task-2');
   });
 
   it('applyTaskEvent adds new task to taskOrder if not present', () => {
@@ -92,7 +92,7 @@ describe('agentStore', () => {
     useAgentStore.getState().applyTaskEvent(newTask);
 
     const state = useAgentStore.getState();
-    expect(state.taskOrder).toEqual(['task-2', 'task-1']);
+    expect(state.taskOrder).toEqual(['local:task-2', 'local:task-1']);
   });
 
   it('setSelectedTask updates selectedTaskId', () => {
@@ -122,8 +122,8 @@ describe('agentStore', () => {
     const task = makeTask({ sessionID: 'task-1' });
     useAgentStore.getState().upsertTasksFromSnapshot([task], makeStats());
 
-    useAgentStore.getState().setSelectedTask('task-1');
-    expect(selectSelectedTask(useAgentStore.getState())).toEqual(task);
+    useAgentStore.getState().setSelectedTask('local:task-1');
+    expect(selectSelectedTask(useAgentStore.getState())).toMatchObject(task);
 
     useAgentStore.getState().setSelectedTask('missing-task');
     expect(selectSelectedTask(useAgentStore.getState())).toBeNull();
@@ -155,8 +155,8 @@ describe('agentStore', () => {
 
     const childrenByTaskId = selectChildrenByTaskId(useAgentStore.getState());
 
-    expect(childrenByTaskId.get('parent-a')?.map((task) => task.sessionID)).toEqual(['child-a2', 'child-a1']);
-    expect(childrenByTaskId.get('parent-b')?.map((task) => task.sessionID)).toEqual(['child-b1']);
+    expect(childrenByTaskId.get('local:parent-a')?.map((task) => task.sessionID)).toEqual(['child-a2', 'child-a1']);
+    expect(childrenByTaskId.get('local:parent-b')?.map((task) => task.sessionID)).toEqual(['child-b1']);
     expect(childrenByTaskId.get('missing')).toBeUndefined();
   });
 

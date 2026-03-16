@@ -61,9 +61,12 @@ Arguments:
 Returns:
 - Current status and result (if completed)
 - When full_session=true, returns filtered session messages
+- When full_session=true on a running task, returns partial results (messages available so far)
+- Combine full_session with since_message_id for incremental polling of new messages from running tasks
 - When block=true, waits until task completes or timeout is reached
-- When block=false (default), returns immediately with current status`,
+- When block=false (default), returns immediately with current status
 
+Note: full_session works for both running and completed tasks. For running tasks, it returns all messages available so far, allowing real-time progress monitoring.`,
   backgroundClear: `Clear and abort all background tasks immediately.
 
 Use this to stop all running background agents and clear the task list.

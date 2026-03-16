@@ -76,6 +76,8 @@ export class SSEBroadcaster {
 export interface SSEDataProvider {
   getAllTasks(): BackgroundTask[];
   buildStats(): StatsResponse;
+  instanceId: string;
+  instanceName: string;
 }
 
 /**
@@ -109,13 +111,15 @@ export function handleSSERequest(
       const snapshot = {
         tasks: dataProvider.getAllTasks(),
         stats: dataProvider.buildStats(),
+        instanceId: dataProvider.instanceId,
+        instanceName: dataProvider.instanceName,
       };
       broadcaster.sendTo(controller, "snapshot", snapshot);
 
       // Start heartbeat
       heartbeatTimer = setInterval(() => {
         try {
-          broadcaster.sendTo(controller, "heartbeat", { ts: new Date().toISOString() });
+          broadcaster.sendTo(controller, "heartbeat", { ts: new Date().toISOString(), instanceId: dataProvider.instanceId, instanceName: dataProvider.instanceName });
         } catch {
           clearInterval(heartbeatTimer);
           broadcaster.removeSubscriber(controller);

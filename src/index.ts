@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+import path from "node:path";
 import type { Hooks, PluginInput } from "@opencode-ai/plugin";
 import { BackgroundManager } from "./manager";
 import { StatusApiServer } from "./server";
@@ -21,10 +23,12 @@ export type { BackgroundTask, BackgroundTaskStatus, TaskProgress, LaunchInput } 
  * that run in separate sessions while the main conversation continues.
  */
 export default async function plugin(ctx: PluginInput): Promise<Hooks> {
+  const instanceId = randomUUID();
+  const instanceName = path.basename(ctx.directory);
   const manager = new BackgroundManager(ctx);
 
   // Start HTTP Status API server
-  const server = await StatusApiServer.start(manager);
+  const server = await StatusApiServer.start(manager, { instanceId, instanceName, directory: ctx.directory });
   if (server) {
     const cleanup = () => {
       server.stop();
