@@ -1,5 +1,5 @@
 import { DEFAULT_TASK_LIMIT, MAX_TASK_LIMIT } from "../constants";
-import type { BackgroundTask } from "../types";
+import type { BackgroundTask, MessageFilter, FilteredMessage } from "../types";
 import { errorResponse, jsonResponse } from "./cors";
 import type {
   HealthResponse,
@@ -7,6 +7,8 @@ import type {
   StatsResponse,
   TaskGroupResponse,
   TaskLogsResponse,
+  MessagesResponse,
+  InstancesResponse,
 } from "./types";
 
 // =============================================================================
@@ -18,6 +20,7 @@ export interface RouteManager {
   getAllTasks(): BackgroundTask[];
   getTask(id: string): BackgroundTask | undefined;
   getTaskMessages(sessionID: string): Promise<Array<unknown>>;
+  getFilteredMessages(sessionID: string, filter: MessageFilter): Promise<FilteredMessage[]>;
 }
 
 // =============================================================================
@@ -185,6 +188,54 @@ export async function handleTaskLogs(
     messages,
     taskId: id,
     retrievedAt: new Date().toISOString(),
+  };
+  return jsonResponse(body);
+}
+
+// =============================================================================
+// Task Messages / Instances
+// =============================================================================
+
+export async function handleTaskMessages(
+  req: Request,
+  manager: RouteManager,
+  taskId: string
+): Promise<Response> {
+  const task = manager.getTask(taskId);
+  if (!task) {
+    return errorResponse("Task not found", 404);
+  }
+
+  const url = new URL(req.url);
+  const parseOptionalInt = (value: string | null): number | undefined => {
+    if (value === null) return undefined;
+    const parsed = Number.parseInt(value, 10);
+    return Number.isNaN(parsed) ? undefined : parsed;
+  };
+
+  const filter: MessageFilter = {
+    fullSession: url.searchParams.get("full_session") === "true",
+    includeThinking: url.searchParams.get("include_thinking") === "true",
+    includeToolResults: url.searchParams.get("include_tool_results") === "true",
+    sinceMessageId: url.searchParams.get("since_message_id") ?? undefined,
+    messageLimit: parseOptionalInt(url.searchParams.get("message_limit")),
+    thinkingMaxChars: parseOptionalInt(url.searchParams.get("thinking_max_chars")),
+  };
+
+  const messages = await manager.getFilteredMessages(task.sessionID, filter);
+  const body: MessagesResponse = {
+    messages,
+    taskId: task.sessionID,
+    filter,
+  };
+  return jsonResponse(body);
+}
+
+export async function handleInstances(_req: Request, discovery: any): Promise<Response> {
+  const instances = await discovery.discover();
+  const body: InstancesResponse = {
+    instances,
+    discoveredAt: new Date().toISOString(),
   };
   return jsonResponse(body);
 }

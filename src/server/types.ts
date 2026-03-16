@@ -1,4 +1,10 @@
-import type { BackgroundTask, BackgroundTaskStatus } from "../types";
+import type {
+  BackgroundTask,
+  BackgroundTaskStatus,
+  DiscoveredInstance,
+  FilteredMessage,
+  MessageFilter,
+} from "../types";
 
 // =============================================================================
 // REST Response Types
@@ -36,6 +42,17 @@ export interface TaskLogsResponse {
   messages: unknown[]; // Message array from getTaskMessages
   taskId: string;
   retrievedAt: string; // ISO 8601
+}
+
+export interface MessagesResponse {
+  messages: FilteredMessage[];
+  taskId: string;
+  filter: MessageFilter;
+}
+
+export interface InstancesResponse {
+  instances: DiscoveredInstance[];
+  discoveredAt: string; // ISO 8601
 }
 
 export interface TaskGroupResponse {

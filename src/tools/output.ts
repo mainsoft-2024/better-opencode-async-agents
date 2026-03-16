@@ -1,7 +1,7 @@
 import { type ToolDefinition, tool } from "@opencode-ai/plugin";
 import { formatTaskResult, formatTaskStatus } from "../helpers";
 import { ERROR_MESSAGES, TOOL_DESCRIPTIONS } from "../prompts";
-import type { BackgroundTask } from "../types";
+import type { BackgroundTask, FilteredMessage, MessageFilter } from "../types";
 
 /** Default timeout in seconds for blocking mode */
 const DEFAULT_TIMEOUT_SECONDS = 30;
@@ -24,6 +24,7 @@ export function createBackgroundOutput(manager: {
   waitForTask(taskId: string, timeoutMs: number): Promise<BackgroundTask | null>;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   getTaskMessages(sessionID: string): Promise<any[]>;
+  getFilteredMessages(sessionID: string, filter: MessageFilter): Promise<FilteredMessage[]>;
 }): ToolDefinition {
   return tool({
     description: TOOL_DESCRIPTIONS.backgroundOutput,
@@ -31,8 +32,24 @@ export function createBackgroundOutput(manager: {
       task_id: tool.schema.string().nonoptional(),
       block: tool.schema.boolean().optional(),
       timeout: tool.schema.number().optional(),
+      full_session: tool.schema.boolean().optional(),
+      include_thinking: tool.schema.boolean().optional(),
+      include_tool_results: tool.schema.boolean().optional(),
+      since_message_id: tool.schema.string().optional(),
+      message_limit: tool.schema.number().optional(),
+      thinking_max_chars: tool.schema.number().optional(),
     },
-    async execute(args: { task_id: string; block?: boolean; timeout?: number }) {
+    async execute(args: {
+      task_id: string;
+      block?: boolean;
+      timeout?: number;
+      full_session?: boolean;
+      include_thinking?: boolean;
+      include_tool_results?: boolean;
+      since_message_id?: string;
+      message_limit?: number;
+      thinking_max_chars?: number;
+    }) {
       try {
         // Resolve short ID or prefix to full ID (checks disk if not in memory)
         const resolvedId = await manager.resolveTaskIdWithFallback(args.task_id);
@@ -74,6 +91,38 @@ export function createBackgroundOutput(manager: {
         // Use skipNotification=true when blocking to avoid duplicate notifications
         task = await manager.checkAndUpdateTaskStatus(task, shouldBlock);
 
+        if (args.full_session === true) {
+          const filter: MessageFilter = {
+            fullSession: true,
+            includeThinking: args.include_thinking,
+            includeToolResults: args.include_tool_results,
+            sinceMessageId: args.since_message_id,
+            messageLimit:
+              args.message_limit !== undefined ? Math.min(args.message_limit, 100) : undefined,
+            thinkingMaxChars: args.thinking_max_chars,
+          };
+          const filteredMessages = await manager.getFilteredMessages(task.sessionID, filter);
+
+          if (filteredMessages.length === 0) {
+            return "No messages available for this task.";
+          }
+
+          return filteredMessages
+            .map((message: FilteredMessage) => {
+              const sections = [`[${message.id}] ${message.role}: ${message.content}`];
+
+              if (message.thinking) {
+                sections.push(`thinking:\n${message.thinking}`);
+              }
+
+              if (message.toolCalls && message.toolCalls.length > 0) {
+                sections.push(`toolCalls:\n${JSON.stringify(message.toolCalls, null, 2)}`);
+              }
+
+              return sections.join("\n");
+            })
+            .join("\n\n");
+        }
         if (task.status === "completed") {
           if (!task.resultRetrievedAt) {
             task.resultRetrievedAt = new Date().toISOString();

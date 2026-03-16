@@ -1,11 +1,11 @@
 ---
 created: 2026-03-16T06:47:30Z
-last_updated: 2026-03-16T06:47:30Z
+last_updated: 2026-03-16T08:15:00Z
 type: spec
 change_id: 2026-03-16-absorb-omo-background-features
 status: active
 trigger: "Absorb OMO background agent features: session message filtering for bgagent_output, all-status resume with queueing, HTTP API extension with messages endpoint, and React dashboard mini app with multi-instance discovery"
-estimated_phases: 8
+estimated_phases: 5
 ---
 
 # Phases Overview: Absorb OMO Background Agent Features
@@ -19,42 +19,27 @@ estimated_phases: 8
 - **Dependencies to add**: `bonjour-service` (mDNS), React + Vite + Tailwind (dashboard devDeps)
 - **Test framework**: Bun test (`bun:test`), co-located `__tests__/` directories
 
-## Phase 1: Types & Core Message Filtering (~12min)
+## Phase 1: Types & Core Message Filtering (~12min) ✅ COMPLETED
 - Target tasks: tasks.md Section 1 (1.1–1.6), Section 2 (2.1–2.3)
 - Dependencies: none
-- Scope: Define all new types/interfaces. Build the message filtering engine as a standalone module. This is the foundation everything else depends on.
+- Scope: Define all new types/interfaces. Build the message filtering engine as a standalone module.
 
-## Phase 2: bgagent_output Extension + Tests (~12min)
+## Phase 2: bgagent_output Extension + Tests (~12min) ✅ COMPLETED
 - Target tasks: tasks.md Section 3 (3.1–3.4), Section 8 (8.1–8.3)
 - Dependencies: Phase 1
 - Scope: Extend the bgagent_output tool with 6 new parameters. Write unit tests for message filtering and bgagent_output backward compatibility.
 
-## Phase 3: Resume Extension + Tests (~12min)
-- Target tasks: tasks.md Section 4 (4.1–4.5), Section 8 (8.4–8.5)
-- Dependencies: Phase 1
-- Scope: Remove completed-only restriction, add running-task queue, add error/cancelled resume. Write unit tests for all resume paths.
+## Phase 3: Resume + HTTP API + Discovery (~15min)
+- Target tasks: tasks.md Section 4 (4.1–4.5), Section 5 (5.1–5.4), Section 6 (6.1–6.4), Section 8 (8.4–8.8)
+- Dependencies: Phase 2
+- Scope: All remaining backend work — resume extension (all-status + queue), HTTP messages endpoint, discovery class, new route registration, static file serving, constants, bonjour dep. Tests for all of the above.
 
-## Phase 4: HTTP API Messages Endpoint + Discovery Setup (~12min)
-- Target tasks: tasks.md Section 5 (5.1–5.3), Section 6 (6.1–6.4)
-- Dependencies: Phase 1 (types), Phase 2 (message filtering engine)
-- Scope: Add /v1/tasks/:id/messages endpoint. Create InstanceDiscovery class. Add bonjour-service dependency. Register new routes.
+## Phase 4: Dashboard App (~15min)
+- Target tasks: tasks.md Section 7 (7.1–7.13)
+- Dependencies: Phase 3 (API endpoints must exist)
+- Scope: Full React dashboard — Vite+React+Tailwind scaffolding, SSE/instances/messages hooks, all UI components (TaskTree, TaskCard, ConversationViewer, BatchGroup, InstanceSelector, StatusBar), build scripts.
 
-## Phase 5: HTTP API Tests + Discovery Tests (~10min)
-- Target tasks: tasks.md Section 5 (5.4 — static serving prep), Section 8 (8.6–8.8)
-- Dependencies: Phase 4
-- Scope: Write unit tests for new HTTP endpoints and discovery class. Add static file serving route for dashboard.
-
-## Phase 6: Dashboard Scaffolding + Core Hooks (~15min)
-- Target tasks: tasks.md Section 7 (7.1–7.5)
-- Dependencies: Phase 4 (API endpoints must exist)
-- Scope: Create dashboard/ directory with full Vite+React+Tailwind setup. Implement SSE hook, instances hook, task messages hook.
-
-## Phase 7: Dashboard Components (~15min)
-- Target tasks: tasks.md Section 7 (7.6–7.13)
-- Dependencies: Phase 6
-- Scope: Build all UI components: TaskTree, TaskCard, ConversationViewer, BatchGroup, InstanceSelector, StatusBar. Configure build scripts.
-
-## Phase 8: Integration, Build & Verification (~10min)
+## Phase 5: Integration, Build & Verification (~8min)
 - Target tasks: tasks.md Section 8 (8.9), Section 9 (9.1–9.5)
 - Dependencies: all previous phases
-- Scope: Dashboard static serving integration test. Full typecheck, test suite, plugin build, dashboard build. Manual smoke test.
+- Scope: Dashboard static serving integration test. Full typecheck, test suite, plugin build, dashboard build. Smoke test verification.

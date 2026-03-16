@@ -262,6 +262,8 @@ export async function getTaskMessages(
  * @param skipNotification - If true, skip sending notification to parent session.
  *   Use this when the parent is blocked waiting for a tool result (e.g., background_output with block=true).
  * @param getTaskMessages - Function to get messages from a session (for fallback detection).
+ * @param persistTask - Optional callback to persist task changes immediately.
+ * @param sendPendingResumeAsync - Optional callback to execute queued resume prompts.
  */
 export async function checkAndUpdateTaskStatus(
   task: BackgroundTask,
@@ -276,11 +278,35 @@ export async function checkAndUpdateTaskStatus(
   emitTaskEvent?: (
     eventType: "task.completed" | "task.error" | "task.cancelled",
     task: BackgroundTask
-  ) => void
+  ) => void,
+  persistTask?: (task: BackgroundTask) => Promise<void>,
+  sendPendingResumeAsync?: (task: BackgroundTask, prompt: string) => Promise<void>
 ): Promise<BackgroundTask> {
   if (task.status !== "running") {
     return task;
   }
+
+  const completeTask = async (): Promise<BackgroundTask> => {
+    task.status = "completed";
+    task.completedAt = new Date().toISOString();
+    emitTaskEvent?.("task.completed", task);
+
+    if (task.pendingResume && sendPendingResumeAsync) {
+      const { prompt } = task.pendingResume;
+      task.pendingResume = undefined;
+      task.status = "resumed";
+      task.resumeCount++;
+      if (persistTask) {
+        await persistTask(task);
+      }
+      sendPendingResumeAsync(task, prompt).catch(() => {});
+    }
+
+    if (!skipNotification) {
+      notifyParentSession(task);
+    }
+    return task;
+  };
 
   try {
     const statusResult = await client.session.status();
@@ -288,13 +314,7 @@ export async function checkAndUpdateTaskStatus(
     const sessionStatus = allStatuses[task.sessionID];
 
     if (sessionStatus?.type === "idle") {
-      task.status = "completed";
-      task.completedAt = new Date().toISOString();
-      emitTaskEvent?.("task.completed", task);
-      if (!skipNotification) {
-        notifyParentSession(task);
-      }
-      return task;
+      return completeTask();
     }
 
     // Fallback: if session isn't in the status response, it may have completed.
@@ -309,12 +329,8 @@ export async function checkAndUpdateTaskStatus(
         );
 
         if (hasAssistantResponse) {
-          task.status = "completed";
-          task.completedAt = new Date().toISOString();
-          emitTaskEvent?.("task.completed", task);
-          if (!skipNotification) {
-            notifyParentSession(task);
-          }
+          await completeTask();
+          return task;
         }
       } catch {
         // Ignore fallback check errors

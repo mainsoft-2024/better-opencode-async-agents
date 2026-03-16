@@ -4,7 +4,9 @@ import { SUCCESS_MESSAGES } from "../prompts";
 import { getPersistedTask, loadTasks, saveTask } from "../storage";
 import type {
   BackgroundTask,
+  FilteredMessage,
   LaunchInput,
+  MessageFilter,
   OpencodeClient,
   PersistedTask,
   TaskProgress,
@@ -18,6 +20,7 @@ import {
   showProgressToast,
 } from "./notifications";
 import { pollRunningTasks, startPolling, stopPolling, updateTaskProgress } from "./polling";
+import { filterMessages } from "./messages";
 import {
   cancelTask,
   checkAndUpdateTaskStatus,
@@ -363,6 +366,14 @@ export class BackgroundManager {
     }>
   > {
     return getTaskMessages(sessionID, this.client);
+  }
+
+  async getFilteredMessages(
+    sessionID: string,
+    filter: MessageFilter
+  ): Promise<FilteredMessage[]> {
+    const rawMessages = await this.getTaskMessages(sessionID);
+    return filterMessages(rawMessages, filter);
   }
 
   async checkAndUpdateTaskStatus(

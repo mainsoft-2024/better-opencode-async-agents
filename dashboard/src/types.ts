@@ -1,11 +1,4 @@
-import type { PluginInput } from "@opencode-ai/plugin";
-
-// =============================================================================
-// Types
-// =============================================================================
-
 export type BackgroundTaskStatus = "running" | "completed" | "error" | "cancelled" | "resumed";
-
 export type TaskPhase = "waiting" | "streaming" | "tool";
 
 export interface TaskProgress {
@@ -13,44 +6,15 @@ export interface TaskProgress {
   toolCallsByName: Record<string, number>;
   lastTools: string[];
   lastUpdate: string;
-  // Phase-aware animation state
   phase: TaskPhase;
   textCharCount: number;
   streamFrame: number;
   brailleFrame: number;
   progressBarFrame: number;
-  _prevPhase?: TaskPhase;
   waitingFrame: number;
   toolFrame: number;
-  _waitPollCount?: number;
 }
 
-/**
- * Minimal metadata persisted to disk.
- * OpenCode stores chat history, we only store what's not available there.
- */
-export interface PersistedTask {
-  description: string;
-  agent: string;
-  parentSessionID: string;
-  createdAt: string;
-  status: BackgroundTaskStatus;
-  resumeCount?: number;
-  isForked?: boolean;
-  // Extended fields for HTTP Status API
-  completedAt?: string;
-  error?: string;
-  result?: string;
-  progress?: TaskProgress;
-  startedAt?: string;
-  batchId?: string;
-  pendingResume?: { prompt: string; queuedAt: string };
-}
-
-/**
- * Full task object used in memory.
- * sessionID is the task identifier (no separate id field).
- */
 export interface BackgroundTask {
   sessionID: string;
   parentSessionID: string;
@@ -98,18 +62,39 @@ export type DiscoveredInstance = {
   metadata: Record<string, string>;
 };
 
-
-export interface LaunchInput {
-  /** Task ID to resume (if provided, enters resume mode) */
-  resume?: string;
-  /** Fork parent context to child session (creates session with inherited history) */
-  fork?: boolean;
-  description: string;
-  prompt: string;
-  agent: string;
-  parentSessionID: string;
-  parentMessageID: string;
-  parentAgent: string;
+export interface PaginatedTasksResponse {
+  tasks: BackgroundTask[];
+  total: number;
+  limit: number;
+  offset: number;
 }
 
-export type OpencodeClient = PluginInput["client"];
+export interface StatsResponse {
+  byStatus: Record<string, number>;
+  byAgent: Record<string, number>;
+  toolCallsByName: Record<string, number>;
+  toolCallsByAgent: Record<string, number>;
+  duration: { avg: number; max: number; min: number; };
+  totalTasks: number;
+  activeTasks: number;
+}
+
+export interface TaskGroupResponse {
+  groupId: string;
+  tasks: BackgroundTask[];
+  stats: {
+    completed: number; running: number; error: number; cancelled: number;
+    total: number; completionRate: number; totalToolCalls: number;
+    toolCallsByName: Record<string, number>;
+    toolCallsByAgent: Record<string, number>;
+    duration: number;
+  };
+}
+
+export type SSEEventType =
+  | "snapshot" | "task.created" | "task.updated"
+  | "task.completed" | "task.error" | "task.cancelled" | "heartbeat";
+
+export interface SnapshotEvent { tasks: BackgroundTask[]; stats: StatsResponse; }
+export interface TaskDeltaEvent { task: BackgroundTask; }
+export interface HeartbeatEvent { ts: string; }

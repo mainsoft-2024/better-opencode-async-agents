@@ -61,12 +61,6 @@ export async function validateResumeTask(
     };
   }
 
-  if (task.status !== "completed") {
-    return {
-      valid: false,
-      error: ERROR_MESSAGES.onlyCompletedCanResume(task.status),
-    };
-  }
 
   return { valid: true, task };
 }
@@ -86,6 +80,26 @@ export async function executeResume(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   toolContext: any
 ): Promise<{ success: true; message: string } | { success: false; error: string }> {
+  if (task.status === "running") {
+    if (task.pendingResume) {
+      return {
+        success: false,
+        error: ERROR_MESSAGES.queueFull,
+      };
+    }
+
+    task.pendingResume = {
+      prompt,
+      queuedAt: new Date().toISOString(),
+    };
+    await manager.persistTask(task);
+
+    return {
+      success: true,
+      message: SUCCESS_MESSAGES.resumeQueued(shortId(task.sessionID)),
+    };
+  }
+
   // Set status to resumed and increment count
   setTaskStatus(task, "resumed");
   task.resumeCount++;

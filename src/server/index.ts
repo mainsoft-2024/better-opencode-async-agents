@@ -10,8 +10,11 @@ import {
   handleTaskGroup,
   handleTaskList,
   handleTaskLogs,
+  handleTaskMessages,
+  handleInstances,
 } from "./routes";
 import { SSEBroadcaster, type SSEDataProvider, handleSSERequest } from "./sse";
+import { InstanceDiscovery } from "./discovery";
 import type { StatsResponse } from "./types";
 
 export class StatusApiServer {
@@ -19,6 +22,7 @@ export class StatusApiServer {
   private broadcaster: SSEBroadcaster;
   private unsubscribe: (() => void) | null = null;
   private startedAt: string;
+  private discovery: InstanceDiscovery;
 
   private constructor(
     private manager: RouteManager & {
@@ -28,6 +32,7 @@ export class StatusApiServer {
   ) {
     this.broadcaster = new SSEBroadcaster();
     this.startedAt = new Date().toISOString();
+    this.discovery = new InstanceDiscovery();
   }
 
   /**
@@ -59,6 +64,7 @@ export class StatusApiServer {
 
     const broadcaster = this.broadcaster;
     const manager = this.manager;
+    const discovery = this.discovery;
 
     // Try ports with retry
     let lastError: Error | null = null;
@@ -82,12 +88,20 @@ export class StatusApiServer {
             if (path === "/v1/stats") return handleStats(req, manager);
             if (path === "/v1/tasks") return handleTaskList(req, manager);
             if (path === "/v1/events") return handleSSERequest(req, broadcaster, dataProvider);
+            if (path === "/v1/instances") return handleInstances(req, discovery);
 
             // Match /v1/tasks/:id/logs
             const logsMatch = path.match(/^\/v1\/tasks\/([^/]+)\/logs$/);
             const logsId = logsMatch?.[1];
             if (logsId) {
               return handleTaskLogs(req, manager, logsId);
+            }
+
+            // Match /v1/tasks/:id/messages (must be before /v1/tasks/:id)
+            const messagesMatch = path.match(/^\/v1\/tasks\/([^/]+)\/messages$/);
+            const messagesId = messagesMatch?.[1];
+            if (messagesId) {
+              return handleTaskMessages(req, manager, messagesId);
             }
 
             // Match /v1/tasks/:id
@@ -142,6 +156,17 @@ export class StatusApiServer {
       });
     } catch {
       // Non-fatal — discovery file is best-effort
+    }
+
+    try {
+      await this.discovery.advertise(port, {
+        pid: String(process.pid),
+        startedAt: this.startedAt,
+        url,
+        version: "1.0.0",
+      });
+    } catch {
+      // Non-fatal — service discovery is best-effort
     }
   }
 
@@ -211,6 +236,7 @@ export class StatusApiServer {
       this.unsubscribe();
       this.unsubscribe = null;
     }
+    this.discovery.stop();
     if (this.server) {
       this.server.stop(true); // graceful — wait for in-flight
       this.server = null;

@@ -9,6 +9,8 @@ import {
   handleTaskGroup,
   handleTaskList,
   handleTaskLogs,
+  handleTaskMessages,
+  handleInstances,
 } from "../routes";
 
 // =============================================================================
@@ -31,11 +33,16 @@ const createMockTask = (overrides: Partial<BackgroundTask> = {}): BackgroundTask
   ...overrides,
 });
 
-const createMockManager = (tasks: BackgroundTask[] = []): RouteManager => ({
-  getAllTasks: () => tasks,
-  getTask: (id: string) => tasks.find((t) => t.sessionID === id),
-  getTaskMessages: mock(() => Promise.resolve([{ role: "assistant", content: "result" }])),
-});
+const createMockManager = (
+  tasks: BackgroundTask[] = []
+  ): RouteManager & {
+    getFilteredMessages: (sessionID: string, filter: unknown) => Promise<Array<unknown>>;
+  } => ({
+    getAllTasks: () => tasks,
+    getTask: (id: string) => tasks.find((t) => t.sessionID === id),
+    getTaskMessages: mock(() => Promise.resolve([{ role: "assistant", content: "result" }])),
+    getFilteredMessages: mock(() => Promise.resolve([{ role: "assistant", content: "filtered" }])),
+  });
 
 // =============================================================================
 // Health Endpoint Tests
@@ -618,6 +625,89 @@ describe("handleTaskLogs", () => {
 
     expect(response.status).toBe(404);
     expect(body.error).toBe("Task not found");
+  });
+});
+
+// =============================================================================
+// Task Messages Endpoint Tests
+// =============================================================================
+
+describe("handleTaskMessages", () => {
+  test("returns filtered messages for valid task ID", async () => {
+    const task = createMockTask({ sessionID: "ses_abc123" });
+    const manager = createMockManager([task]);
+    const filteredMessages = [{ role: "assistant", content: "filtered result" }];
+    manager.getFilteredMessages = mock(() => Promise.resolve(filteredMessages));
+    const request = new Request("http://localhost:5165/v1/tasks/ses_abc123/messages");
+
+    const response = await handleTaskMessages(request, manager, "ses_abc123");
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.taskId).toBe("ses_abc123");
+    expect(body.messages).toEqual(filteredMessages);
+  });
+
+  test("maps query params to message filter", async () => {
+    const task = createMockTask({ sessionID: "ses_abc123" });
+    const manager = createMockManager([task]);
+    const getFilteredMessages = mock(() => Promise.resolve([]));
+    manager.getFilteredMessages = getFilteredMessages;
+    const request = new Request(
+      "http://localhost:5165/v1/tasks/ses_abc123/messages?full_session=true&include_thinking=true&include_tool_results=true&since_message_id=msg_42&message_limit=25&thinking_max_chars=400"
+    );
+
+    await handleTaskMessages(request, manager, "ses_abc123");
+
+    expect(getFilteredMessages).toHaveBeenCalledWith("ses_abc123", {
+      fullSession: true,
+      includeThinking: true,
+      includeToolResults: true,
+      sinceMessageId: "msg_42",
+      messageLimit: 25,
+      thinkingMaxChars: 400,
+    });
+  });
+
+  test("returns 404 for unknown task ID", async () => {
+    const manager = createMockManager([]);
+    const request = new Request("http://localhost:5165/v1/tasks/ses_unknown/messages");
+
+    const response = await handleTaskMessages(request, manager, "ses_unknown");
+    const body = await response.json();
+
+    expect(response.status).toBe(404);
+    expect(body.error).toBe("Task not found");
+  });
+});
+
+// =============================================================================
+// Instances Endpoint Tests
+// =============================================================================
+
+describe("handleInstances", () => {
+  test("returns discovered instances", async () => {
+    const discoveredInstances = [
+      {
+        url: "http://127.0.0.1:5165",
+        port: 5165,
+        pid: 12345,
+        startedAt: "2024-01-01T10:00:00.000Z",
+        version: "1.0.0",
+      },
+    ];
+    const discovery = {
+      discover: mock(() => Promise.resolve(discoveredInstances)),
+    };
+    const request = new Request("http://localhost:5165/v1/instances");
+
+    const response = await handleInstances(request, discovery as any);
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(discovery.discover).toHaveBeenCalled();
+    expect(body.instances).toEqual(discoveredInstances);
+    expect(body.discoveredAt).toBeDefined();
   });
 });
 

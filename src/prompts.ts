@@ -51,9 +51,16 @@ Arguments:
 - task_id: Required task ID to get output from
 - block: Optional boolean to wait for task completion (default: false)
 - timeout: Optional timeout in seconds when blocking (default: 120, max: 600)
+- full_session: Optional boolean to return full session messages instead of just the final result (default: false)
+- include_thinking: Optional boolean to include thinking/reasoning content (default: false, requires full_session=true)
+- include_tool_results: Optional boolean to include tool result content (default: false, requires full_session=true)
+- since_message_id: Optional message ID to return only messages after this ID (requires full_session=true)
+- message_limit: Optional max number of messages to return, max 100 (requires full_session=true)
+- thinking_max_chars: Optional max characters for thinking content truncation (requires full_session=true)
 
 Returns:
 - Current status and result (if completed)
+- When full_session=true, returns filtered session messages
 - When block=true, waits until task completes or timeout is reached
 - When block=false (default), returns immediately with current status`,
 
@@ -91,6 +98,10 @@ Task ID: \`${shortTaskId}\`${resumeCountInfo}
 Follow-up prompt sent. You can continue working or say 'waiting' and halt.`;
   },
 
+  resumeQueued: (shortTaskId: string) => `⏳ **Resume queued**
+Task ID: \`${shortTaskId}\`
+Will execute automatically when the current run completes.`,
+
   clearedAllTasks: (
     runningCount: number,
     totalCount: number,
@@ -121,6 +132,8 @@ export const ERROR_MESSAGES = {
     "Task is currently being resumed. Wait for completion.",
   onlyCompletedCanResume: (currentStatus: string) =>
     `Only completed tasks can be resumed. Current status: ${currentStatus}`,
+  queueFull:
+    "Task already has a pending resume queued. Wait for current execution to complete.",
   sessionExpired:
     "Session expired or was deleted. Start a new bgagent_task to continue.",
 

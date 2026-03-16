@@ -126,3 +126,6 @@ export const HEARTBEAT_INTERVAL_MS = 30_000;
 export const MAX_SSE_SUBSCRIBERS = 50;
 export const DEFAULT_TASK_LIMIT = 50;
 export const MAX_TASK_LIMIT = 200;
+
+export const DISCOVERY_SERVICE_TYPE = "bgagent-api";
+export const DISCOVERY_TIMEOUT_MS = 3000;
