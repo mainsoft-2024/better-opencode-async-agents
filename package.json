@@ -1,6 +1,6 @@
 {
   "name": "better-opencode-async-agents",
-  "version": "0.7.1",
+  "version": "0.7.2",
   "description": "Background task management plugin for OpenCode AI",
   "type": "module",
   "main": "./dist/index.js",
@@ -50,7 +50,7 @@
     "build": "bun build src/index.ts --outdir dist --format esm --sourcemap=linked --external=bonjour-service",
     "build:types": "tsc --emitDeclarationOnly",
     "build:dashboard": "cd dashboard && bun install && bunx vite build",
-    "build:all": "rm -rf dist && bun run build && bun run build:types && bun run build:dashboard",
+    "build:all": "rm -rf dist && bun run build && bun run build:types && bun run build:dashboard && cp -r dashboard/dist dist/dashboard",
     "clean": "rm -rf dist",
     "lint": "biome check src/",
     "format": "biome format src/ --write",

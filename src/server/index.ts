@@ -123,7 +123,7 @@ export class StatusApiServer {
 
             // Dashboard static serving
             if (path === "/dashboard" || path.startsWith("/dashboard/")) {
-              const dashboardDir = resolve(import.meta.dirname ?? __dirname, "../../dashboard/dist");
+              const dashboardDir = resolve(import.meta.dirname ?? __dirname, "../dashboard");
               if (!existsSync(dashboardDir)) {
                 return errorResponse("Dashboard not built. Run: bun run build:dashboard", 404);
               }
@@ -166,6 +166,7 @@ export class StatusApiServer {
     // Write discovery file
     const port = this.server!.port!;
     const url = `http://${host}:${port}`;
+    console.log(`[bgagent] Dashboard: ${url}/dashboard`);
     try {
       await writeServerInfo({
         port,
