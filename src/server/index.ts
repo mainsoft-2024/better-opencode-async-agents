@@ -1,3 +1,5 @@
+import { resolve, join } from "path";
+import { existsSync } from "fs";
 import { DEFAULT_API_HOST, DEFAULT_API_PORT, MAX_PORT_RETRY } from "../constants";
 import { deleteServerInfo, writeServerInfo } from "../storage";
 import type { BackgroundTask } from "../types";
@@ -118,6 +120,24 @@ export class StatusApiServer {
               return handleTaskGroup(req, manager, groupId);
             }
 
+
+            // Dashboard static serving
+            if (path === "/dashboard" || path.startsWith("/dashboard/")) {
+              const dashboardDir = resolve(import.meta.dirname ?? __dirname, "../../dashboard/dist");
+              if (!existsSync(dashboardDir)) {
+                return errorResponse("Dashboard not built. Run: bun run build:dashboard", 404);
+              }
+              let filePath = path === "/dashboard" || path === "/dashboard/"
+                ? join(dashboardDir, "index.html")
+                : join(dashboardDir, path.replace("/dashboard/", ""));
+              if (!existsSync(filePath)) {
+                filePath = join(dashboardDir, "index.html"); // SPA fallback
+              }
+              const file = Bun.file(filePath);
+              return new Response(file, {
+                headers: { ...CORS_HEADERS, "Content-Type": file.type },
+              });
+            }
             return errorResponse("Not Found", 404);
           },
         });
