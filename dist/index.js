@@ -34065,7 +34065,11 @@ async function plugin(ctx) {
   const instanceId = randomUUID();
   const instanceName = path_default.basename(ctx.directory);
   const manager = new BackgroundManager(ctx);
-  const server = await StatusApiServer.start(manager, { instanceId, instanceName, directory: ctx.directory });
+  const isOpencodeServeMode = process.argv.some((arg, index, argv) => arg === "serve" || arg.endsWith("opencode") && argv[index + 1] === "serve");
+  let server = null;
+  if (!isOpencodeServeMode) {
+    server = await StatusApiServer.start(manager, { instanceId, instanceName, directory: ctx.directory });
+  }
   if (server) {
     const cleanup = () => {
       server.stop();
@@ -34089,5 +34093,5 @@ export {
   plugin as default
 };
 
-//# debugId=45519B416F8970BA64756E2164756E21
+//# debugId=F2983D03D5482EA564756E2164756E21
 //# sourceMappingURL=index.js.map

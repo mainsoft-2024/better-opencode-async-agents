@@ -27,8 +27,14 @@ export default async function plugin(ctx: PluginInput): Promise<Hooks> {
   const instanceName = path.basename(ctx.directory);
   const manager = new BackgroundManager(ctx);
 
-  // Start HTTP Status API server
-  const server = await StatusApiServer.start(manager, { instanceId, instanceName, directory: ctx.directory });
+  const isOpencodeServeMode = process.argv.some((arg, index, argv) =>
+    arg === "serve" || (arg.endsWith("opencode") && argv[index + 1] === "serve")
+  );
+
+  let server: StatusApiServer | null = null;
+  if (!isOpencodeServeMode) {
+    server = await StatusApiServer.start(manager, { instanceId, instanceName, directory: ctx.directory });
+  }
   if (server) {
     const cleanup = () => {
       server.stop();
