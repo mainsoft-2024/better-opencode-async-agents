@@ -136,10 +136,13 @@ async function handleLaunchMode(
       parentAgent: toolContext.agent,
     });
 
-    // Get sibling IDs to generate collision-free short ID
     const siblingIds = manager.getTaskSessionIds?.() ?? [];
     const displayId = uniqueShortId(task.sessionID, siblingIds);
-    return SUCCESS_MESSAGES.taskLaunched(displayId);
+    return {
+      title: `${args.agent.trim()}: ${args.description}`,
+      metadata: { sessionId: task.sessionID, agent: args.agent.trim(), parentAgent: toolContext.agent },
+      output: SUCCESS_MESSAGES.taskLaunched(displayId),
+    };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     return ERROR_MESSAGES.launchFailed(message);
