@@ -12,8 +12,9 @@ import { useBreakpoint } from "./hooks/useBreakpoint";
 import { useInstances as useInstancesHook } from "./hooks/useInstances";
 import { useMultiSSE } from "./hooks/useMultiSSE";
 import { useTaskMessages as useTaskMessagesHook } from "./hooks/useTaskMessages";
-import { useAgentStore, useConnectionStatusMap, useInstances, useStats } from "./stores/agentStore";
+import { useAgentStore, useConnectionStatusMap, useInstances, useInstancesById, useStats } from "./stores/agentStore";
 import { useTaskMessages } from "./stores/messageStore";
+import { useTaskActions } from "./hooks/useTaskActions";
 
 function App() {
   const apiBaseUrl = (window as any).__BGAGENT_API_URL__ ?? window.location.origin;
@@ -49,6 +50,24 @@ function App() {
     const el = document.getElementById(`msg-${messageId}`);
     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }, []);
+
+  const { resume } = useTaskActions();
+  const instancesById = useInstancesById();
+  const selectedTask = selectedTaskId ? tasksById[selectedTaskId] : undefined;
+  const taskStatus = selectedTask?.status;
+  const instanceUrl = selectedTask?.instanceId
+    ? (instancesById[selectedTask.instanceId]?.url ?? window.location.origin)
+    : window.location.origin;
+  const canSendMessage =
+    taskStatus === "running" || taskStatus === "stuck" || taskStatus === "resumed";
+  const handleSendMessage = useCallback(
+    (message: string) => {
+      if (selectedTask) {
+        resume(selectedTask.sessionID, message, instanceUrl);
+      }
+    },
+    [selectedTask, instanceUrl, resume],
+  );
 
   // Clear selected task if it no longer exists
   useEffect(() => {
@@ -87,6 +106,9 @@ function App() {
               messages={messages}
               isLoading={messagesLoading}
               taskId={selectedTaskId}
+              taskStatus={taskStatus}
+              onSendMessage={handleSendMessage}
+              canSendMessage={canSendMessage}
             />
             {messagesError && (
               <div className="m-2 rounded border border-red-900/60 bg-red-950/40 px-2 py-1 text-xs text-red-300">

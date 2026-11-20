@@ -1,4 +1,6 @@
+import { useState, useEffect } from "react";
 import { useInstancesById } from "../stores/agentStore";
+import { useTaskActions } from "../hooks/useTaskActions";
 import type { BackgroundTask, BackgroundTaskStatus } from "../types";
 
 type TaskCardProps = {
@@ -13,6 +15,9 @@ const STATUS_BADGE_STYLES: Record<BackgroundTaskStatus, string> = {
   error: "bg-red-500/20 text-red-300 border-red-400/40",
   cancelled: "bg-gray-500/20 text-gray-300 border-gray-400/40",
   resumed: "bg-yellow-500/20 text-yellow-300 border-yellow-400/40",
+  stuck: "bg-red-500/20 text-red-300 border-red-400/40 animate-pulse",
+  "force-restarted": "bg-orange-500/20 text-orange-300 border-orange-400/40",
+  "auto-restarted": "bg-orange-500/20 text-orange-300 border-orange-400/40",
 };
 
 function formatDuration(startedAt: string, completedAt?: string, isRunning?: boolean): string {
@@ -41,6 +46,21 @@ export function TaskCard({ task, isSelected, onClick }: TaskCardProps) {
   const toolCalls = task.progress?.toolCalls ?? 0;
   const isRunning = task.status === "running";
   const duration = formatDuration(task.startedAt, task.completedAt, isRunning);
+  const instanceUrl = instanceInfo?.url ?? window.location.origin;
+  const { restart, cancel } = useTaskActions();
+  const [stuckElapsed, setStuckElapsed] = useState(0);
+
+  useEffect(() => {
+    if (!task.stuckAt) {
+      setStuckElapsed(0);
+      return;
+    }
+    setStuckElapsed(Math.round((Date.now() - task.stuckAt) / 1000));
+    const id = setInterval(() => {
+      setStuckElapsed(Math.round((Date.now() - task.stuckAt!) / 1000));
+    }, 1000);
+    return () => clearInterval(id);
+  }, [task.stuckAt]);
 
   return (
     <button
@@ -78,6 +98,11 @@ export function TaskCard({ task, isSelected, onClick }: TaskCardProps) {
               </span>
             ) : null}
           </div>
+          {task.stuckAt && (
+            <span className="mt-1 inline-block rounded-full border border-red-400/40 bg-red-500/20 px-2 py-0.5 text-xs text-red-300 animate-pulse">
+              Stuck {stuckElapsed}s
+            </span>
+          )}
           <p className="mt-2 truncate text-sm text-gray-200" title={task.description}>
             {task.description}
           </p>
@@ -88,6 +113,28 @@ export function TaskCard({ task, isSelected, onClick }: TaskCardProps) {
         <span>duration: {duration}</span>
         <span>tools: {toolCalls}</span>
         <span className="truncate">id: {task.sessionID}</span>
+      </div>
+      <div className="mt-2 flex flex-wrap gap-2" onClick={(e) => e.stopPropagation()}>
+        {task.status === "stuck" && (
+          <button
+            type="button"
+            className="rounded px-2 py-1 text-xs font-medium bg-red-600 text-white hover:bg-red-500 disabled:opacity-40 disabled:cursor-not-allowed"
+            disabled={(task.restartCount ?? 0) >= (task.maxRestartAttempts ?? 3)}
+            title={(task.restartCount ?? 0) >= (task.maxRestartAttempts ?? 3) ? "Max restarts exceeded" : "Force restart this task"}
+            onClick={() => restart(task.sessionID, instanceUrl)}
+          >
+            Force Restart
+          </button>
+        )}
+        {(task.status === "running" || task.status === "stuck" || task.status === "resumed") && (
+          <button
+            type="button"
+            className="rounded px-2 py-1 text-xs font-medium bg-gray-700 text-gray-200 hover:bg-gray-600"
+            onClick={() => cancel(task.sessionID, instanceUrl)}
+          >
+            Cancel
+          </button>
+        )}
       </div>
     </button>
   );

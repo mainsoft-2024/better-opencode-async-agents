@@ -11,6 +11,8 @@ type ConversationViewerProps = {
   isLoading: boolean;
   taskId: string | null;
   taskStatus?: string;
+  onSendMessage?: (message: string) => void;
+  canSendMessage?: boolean;
 };
 
 export function ConversationViewer({
@@ -18,9 +20,12 @@ export function ConversationViewer({
   isLoading,
   taskId,
   taskStatus,
+  onSendMessage,
+  canSendMessage,
 }: ConversationViewerProps) {
   const virtuosoRef = useRef<VirtuosoHandle>(null);
   const [isAtBottom, setIsAtBottom] = useState(true);
+  const [inputValue, setInputValue] = useState("");
 
   const normalizedMessages = messages ?? [];
   const groups = groupMessages(normalizedMessages);
@@ -120,6 +125,39 @@ export function ConversationViewer({
           </motion.button>
         )}
       </AnimatePresence>
+
+      {/* Chat input bar */}
+      {onSendMessage && (
+        <div className="flex shrink-0 items-center gap-2 border-t border-gray-800 px-4 py-3">
+          <input
+            type="text"
+            placeholder="Send message to agent..."
+            value={inputValue}
+            onChange={(e) => setInputValue(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey && canSendMessage && inputValue.trim()) {
+                onSendMessage(inputValue.trim());
+                setInputValue("");
+              }
+            }}
+            disabled={!canSendMessage}
+            className="flex-1 rounded-md border border-gray-700 bg-gray-900 px-3 py-2 text-sm text-gray-100 placeholder-gray-500 focus:border-blue-500 focus:outline-none disabled:opacity-50"
+          />
+          <button
+            type="button"
+            onClick={() => {
+              if (canSendMessage && inputValue.trim()) {
+                onSendMessage(inputValue.trim());
+                setInputValue("");
+              }
+            }}
+            disabled={!canSendMessage || !inputValue.trim()}
+            className="rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Send
+          </button>
+        </div>
+      )}
     </div>
   );
 }

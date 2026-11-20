@@ -71,6 +71,26 @@ Note: full_session works for both running and completed tasks. For running tasks
 
 Use this to stop all running background agents and clear the task list.
 This is useful when you want to start fresh or cancel all pending work.`,
+
+  backgroundForceRestart: `Force restart a background task that is stuck, errored, or unresponsive.
+
+Creates a new task with the same agent and prompt, preserving context from the last 10 messages of the old task.
+The old task is marked as 'force-restarted'.
+
+Use this when:
+- A task is stuck and not making progress (status: 'stuck')
+- A task has errored and you want to retry with the same configuration
+- A task appears unresponsive despite 'running' status
+
+Arguments:
+- task_id: Required. ID of the task to restart.
+
+Returns:
+- status: 'restarted' with old/new task IDs and restart count
+- status: 'max_attempts_exceeded' if the task has already been restarted the maximum number of times (default: 3)
+
+Note: Each restart increments the restart counter. Auto-restart also uses this counter.
+If restartCount >= maxRestartAttempts, the restart is refused to prevent infinite loops.`,
 };
 
 // =============================================================================

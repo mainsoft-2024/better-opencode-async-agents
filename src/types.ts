@@ -4,7 +4,7 @@ import type { PluginInput } from "@opencode-ai/plugin";
 // Types
 // =============================================================================
 
-export type BackgroundTaskStatus = "running" | "completed" | "error" | "cancelled" | "resumed";
+export type BackgroundTaskStatus = "running" | "completed" | "error" | "cancelled" | "resumed" | "stuck" | "force-restarted" | "auto-restarted";
 
 export type TaskPhase = "waiting" | "streaming" | "tool";
 
@@ -29,6 +29,13 @@ export interface TaskProgress {
  * Minimal metadata persisted to disk.
  * OpenCode stores chat history, we only store what's not available there.
  */
+export interface RestartHistoryEntry {
+  timestamp: number;
+  reason: 'auto-restart' | 'force-restart' | 'manual';
+  previousTaskId: string;
+  errorMessage?: string;
+}
+
 export interface PersistedTask {
   description: string;
   agent: string;
@@ -45,6 +52,15 @@ export interface PersistedTask {
   startedAt?: string;
   batchId?: string;
   pendingResume?: { prompt: string; queuedAt: string };
+  // Stuck detection / restart tracking
+  lastActivityAt?: number;
+  stuckAt?: number;
+  restartCount?: number;
+  originalTaskId?: string;
+  restartHistory?: RestartHistoryEntry[];
+  autoRestart?: boolean;
+  stuckTimeoutSeconds?: number;
+  maxRestartAttempts?: number;
 }
 
 /**
@@ -70,6 +86,15 @@ export interface BackgroundTask {
   resumeCount: number;
   isForked: boolean;
   pendingResume?: { prompt: string; queuedAt: string };
+  // Stuck detection / restart tracking
+  lastActivityAt?: number;
+  stuckAt?: number;
+  restartCount: number;
+  originalTaskId?: string;
+  restartHistory: RestartHistoryEntry[];
+  autoRestart: boolean;
+  stuckTimeoutSeconds: number;
+  maxRestartAttempts: number;
 }
 
 export interface MessageFilter {

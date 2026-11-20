@@ -1,6 +1,7 @@
 import { COMPLETION_DISPLAY_DURATION, STREAMING_FRAMES, WAITING_FRAMES, WAITING_FRAME_INTERVAL, TOOL_FRAMES } from "../constants";
 import { setTaskStatus } from "../helpers";
 import type { BackgroundTask, OpencodeClient, TaskPhase } from "../types";
+import { updateActivityTracking } from "./stuck-detection";
 
 /**
  * FALLBACK & PROGRESS MECHANISM: Polling for task status updates.
@@ -235,6 +236,10 @@ export async function updateTaskProgress(
         } else if (part.type === "text" && part.text && part.text.length > 0) {
           totalTextCharCount += part.text.length;
           hasAnyAssistantContent = true;
+          updateActivityTracking(task, "text");
+        } else if (part.type === "thinking" && part.text && part.text.length > 0) {
+          hasAnyAssistantContent = true;
+          updateActivityTracking(task, "thinking");
         }
       }
     }

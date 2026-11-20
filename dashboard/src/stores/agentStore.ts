@@ -213,6 +213,12 @@ export const selectFilteredTaskOrder = (state: AgentStore): string[] => {
   return state.taskOrder.filter((key) => key.startsWith(`${filter}:`));
 };
 
+export const selectStuckTasks = (state: AgentStore): BackgroundTask[] => {
+  return state.taskOrder
+    .map((taskId) => state.tasksById[taskId])
+    .filter((task): task is BackgroundTask => Boolean(task) && task.status === "stuck");
+};
+
 export const selectInstancesById = (state: AgentStore) => state.instancesById;
 export const selectConnectionStatus = (state: AgentStore) => state.connectionStatus;
 
@@ -232,3 +238,4 @@ export const useTaskById = (taskId: string | null) =>
 export const useTaskOrder = () => useAgentStore((state) => state.taskOrder);
 export const useInstances = () => useAgentStore((state) => state.instances);
 export const useStats = () => useAgentStore((state) => state.stats);
+export const useStuckTasks = () => useAgentStore(selectStuckTasks);

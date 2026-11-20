@@ -1,5 +1,10 @@
 import { type SessionMessage, formatMessagesAsContext, processMessagesForFork } from "../fork";
 import { FORK_MESSAGES, buildForkPreamble } from "../prompts";
+import {
+  STUCK_AUTO_RESTART_ENABLED,
+  STUCK_MAX_RESTART_ATTEMPTS,
+  STUCK_TIMEOUT_SECONDS,
+} from "../constants";
 import type { BackgroundTask, LaunchInput, OpencodeClient } from "../types";
 
 /**
@@ -128,6 +133,14 @@ export async function launchTask(
     batchId,
     resumeCount: 0,
     isForked: input.fork ?? false,
+    lastActivityAt: Date.now(),
+    stuckAt: undefined,
+    restartCount: 0,
+    originalTaskId: undefined,
+    restartHistory: [],
+    autoRestart: STUCK_AUTO_RESTART_ENABLED,
+    stuckTimeoutSeconds: STUCK_TIMEOUT_SECONDS,
+    maxRestartAttempts: STUCK_MAX_RESTART_ATTEMPTS,
     progress: {
       toolCalls: 0,
       toolCallsByName: {},

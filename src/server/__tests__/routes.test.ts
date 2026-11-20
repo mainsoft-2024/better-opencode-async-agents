@@ -12,6 +12,9 @@ import {
   handleTaskLogs,
   handleTaskMessages,
   handleInstances,
+  handleTaskRestart,
+  handleTaskResume,
+  handleTaskCancel,
 } from "../routes";
 
 // =============================================================================
@@ -31,6 +34,11 @@ const createMockTask = (overrides: Partial<BackgroundTask> = {}): BackgroundTask
   batchId: "batch_test123",
   resumeCount: 0,
   isForked: false,
+  restartCount: 0,
+  restartHistory: [],
+  autoRestart: true,
+  stuckTimeoutSeconds: 120,
+  maxRestartAttempts: 3,
   ...overrides,
 });
 
@@ -43,6 +51,16 @@ const createMockManager = (
     getTask: (id: string) => tasks.find((t) => t.sessionID === id),
     getTaskMessages: mock(() => Promise.resolve([{ role: "assistant", content: "result" }])),
     getFilteredMessages: mock(() => Promise.resolve([{ role: "assistant", content: "filtered" }])),
+    cancelTask: mock(() => Promise.resolve()),
+    launch: mock((input: any) => Promise.resolve({
+      ...createMockTask(),
+      sessionID: `ses_new_${Math.random().toString(36).substring(2, 8)}`,
+      description: input.description,
+      agent: input.agent,
+    })),
+    sendResumePromptAsync: mock(() => Promise.resolve()),
+    emitTaskEvent: mock(() => {}),
+    persistTask: mock(() => Promise.resolve()),
   });
 
 // =============================================================================
@@ -1006,5 +1024,135 @@ describe("handleInfo", () => {
     expect(body.pid).toBe(12345);
     expect(body.startedAt).toBe("2024-01-01T10:00:00.000Z");
     expect(body.version).toBe("0.9.0");
+  });
+});
+
+// =============================================================================
+// POST Route Handler Tests
+// =============================================================================
+
+describe("handleTaskRestart", () => {
+  test("returns 200 with new task info on success", async () => {
+    const task = createMockTask({ sessionID: "ses_restart1", status: "running", restartCount: 0, maxRestartAttempts: 3 });
+    const manager = createMockManager([task]);
+
+    const req = new Request("http://localhost:5165/v1/tasks/ses_restart1/restart", { method: "POST" });
+    const response = await handleTaskRestart(req, manager as unknown as RouteManager, "ses_restart1");
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.status).toBe("restarted");
+    expect(body.oldTaskId).toBe("ses_restart1");
+    expect(typeof body.newTaskId).toBe("string");
+    expect(body.restartCount).toBe(1);
+  });
+
+  test("returns 404 when task not found", async () => {
+    const manager = createMockManager([]);
+
+    const req = new Request("http://localhost:5165/v1/tasks/ses_missing_r/restart", { method: "POST" });
+    const response = await handleTaskRestart(req, manager as unknown as RouteManager, "ses_missing_r");
+    const body = await response.json();
+
+    expect(response.status).toBe(404);
+    expect(body.error).toContain("not found");
+  });
+
+  test("returns 400 when max restart attempts exceeded", async () => {
+    const task = createMockTask({ sessionID: "ses_maxed", restartCount: 3, maxRestartAttempts: 3 });
+    const manager = createMockManager([task]);
+
+    const req = new Request("http://localhost:5165/v1/tasks/ses_maxed/restart", { method: "POST" });
+    const response = await handleTaskRestart(req, manager as unknown as RouteManager, "ses_maxed");
+    const body = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(body.error).toMatch(/max restart/i);
+  });
+});
+
+describe("handleTaskResume", () => {
+  test("returns 200 with { status: 'resumed' } for valid running task", async () => {
+    const task = createMockTask({ sessionID: "ses_resume1", status: "running" });
+    const manager = createMockManager([task]);
+
+    const req = new Request("http://localhost:5165/v1/tasks/ses_resume1/resume", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message: "Please continue" }),
+    });
+    const response = await handleTaskResume(req, manager as unknown as RouteManager, "ses_resume1");
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.status).toBe("resumed");
+  });
+
+  test("returns 400 when message is missing", async () => {
+    const task = createMockTask({ sessionID: "ses_resume2", status: "running" });
+    const manager = createMockManager([task]);
+
+    const req = new Request("http://localhost:5165/v1/tasks/ses_resume2/resume", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({}),
+    });
+    const response = await handleTaskResume(req, manager as unknown as RouteManager, "ses_resume2");
+    const body = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(body.error).toMatch(/message/i);
+  });
+
+  test("returns 404 when task not found", async () => {
+    const manager = createMockManager([]);
+
+    const req = new Request("http://localhost:5165/v1/tasks/ses_nope_r/resume", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message: "hello" }),
+    });
+    const response = await handleTaskResume(req, manager as unknown as RouteManager, "ses_nope_r");
+    const body = await response.json();
+
+    expect(response.status).toBe(404);
+    expect(body.error).toContain("not found");
+  });
+});
+
+describe("handleTaskCancel", () => {
+  test("returns 200 with { status: 'cancelled' } on success", async () => {
+    const task = createMockTask({ sessionID: "ses_cancel1", status: "running" });
+    const manager = createMockManager([task]);
+
+    const req = new Request("http://localhost:5165/v1/tasks/ses_cancel1/cancel", { method: "POST" });
+    const response = await handleTaskCancel(req, manager as unknown as RouteManager, "ses_cancel1");
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.status).toBe("cancelled");
+  });
+
+  test("returns 404 when task not found", async () => {
+    const manager = createMockManager([]);
+
+    const req = new Request("http://localhost:5165/v1/tasks/ses_none_c/cancel", { method: "POST" });
+    const response = await handleTaskCancel(req, manager as unknown as RouteManager, "ses_none_c");
+    const body = await response.json();
+
+    expect(response.status).toBe(404);
+    expect(body.error).toContain("not found");
+  });
+
+  test("returns 400 for non-cancellable status (completed)", async () => {
+    const task = createMockTask({ sessionID: "ses_done_c", status: "completed" });
+    const manager = createMockManager([task]);
+
+    const req = new Request("http://localhost:5165/v1/tasks/ses_done_c/cancel", { method: "POST" });
+    const response = await handleTaskCancel(req, manager as unknown as RouteManager, "ses_done_c");
+    const body = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(body.error).toMatch(/cannot be cancelled/i);
   });
 });

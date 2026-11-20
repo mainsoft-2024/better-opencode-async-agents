@@ -117,6 +117,8 @@ export function useMultiSSE(instances: DiscoveredInstance[]): Record<string, nev
         source.addEventListener("task.completed", handleTaskDelta("completed"));
         source.addEventListener("task.error", handleTaskDelta("error"));
         source.addEventListener("task.cancelled", handleTaskDelta("cancelled"));
+        source.addEventListener("task.stuck", handleTaskDelta("stuck"));
+        source.addEventListener("task.restarted", handleTaskDelta());
       };
 
       useAgentStore.getState().setConnectionStatus(instanceId, "connecting");

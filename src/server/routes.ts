@@ -22,6 +22,11 @@ export interface RouteManager {
   getTask(id: string): BackgroundTask | undefined;
   getTaskMessages(sessionID: string): Promise<Array<unknown>>;
   getFilteredMessages(sessionID: string, filter: MessageFilter): Promise<FilteredMessage[]>;
+  cancelTask(taskId: string): Promise<void>;
+  launch(input: any): Promise<BackgroundTask>;
+  sendResumePromptAsync(task: BackgroundTask, message: string, toolContext: any): Promise<void>;
+  emitTaskEvent(eventType: string, task: BackgroundTask): void;
+  persistTask?(task: BackgroundTask): Promise<void>;
 }
 
 // =============================================================================
@@ -323,4 +328,145 @@ export function handleTaskGroup(req: Request, manager: RouteManager, groupId: st
 
 export function handleInfo(_req: Request, instanceMeta: InfoResponse): Response {
   return jsonResponse(instanceMeta);
+}
+
+// =============================================================================
+// POST Route Handlers
+// =============================================================================
+
+export async function handleTaskRestart(
+  req: Request,
+  manager: RouteManager,
+  id: string
+): Promise<Response> {
+  const task = manager.getTask(id);
+  if (!task) {
+    return errorResponse("Task not found", 404);
+  }
+
+  const { STUCK_MAX_RESTART_ATTEMPTS } = await import("../constants");
+  const currentRestartCount = task.restartCount ?? 0;
+  const maxAttempts = task.maxRestartAttempts ?? STUCK_MAX_RESTART_ATTEMPTS;
+  if (currentRestartCount >= maxAttempts) {
+    return errorResponse(
+      `Max restart attempts (${maxAttempts}) exceeded for task ${id}`,
+      400
+    );
+  }
+
+  const messages = await manager.getFilteredMessages(task.sessionID, {
+    fullSession: true,
+    includeThinking: false,
+    messageLimit: 10,
+  });
+
+  const newRestartCount = currentRestartCount + 1;
+  const contextSummary = messages
+    .map((m: any) => `[${m.role ?? m.type}]: ${typeof m.content === "string" ? m.content : JSON.stringify(m.content)}`.slice(0, 500))
+    .join("\n");
+
+  const restartPrompt = `[FORCE RESTART - Attempt ${newRestartCount}/${maxAttempts}]\n\nOriginal task: ${task.description}\n\nLast context:\n${contextSummary}\n\nPlease continue or restart the work from the beginning if needed.`;
+
+  const newTask = await manager.launch({
+    description: task.description,
+    prompt: restartPrompt,
+    agent: task.agent,
+    parentSessionID: task.parentSessionID,
+    parentMessageID: task.parentMessageID,
+    parentAgent: task.parentAgent,
+    batchId: task.batchId,
+    isForked: task.isForked,
+  });
+
+  newTask.restartCount = newRestartCount;
+  newTask.originalTaskId = task.originalTaskId ?? task.sessionID;
+  newTask.restartHistory = [
+    ...(task.restartHistory ?? []),
+    {
+      timestamp: Date.now(),
+      reason: "force-restart" as const,
+      previousTaskId: task.sessionID,
+    },
+  ];
+  newTask.autoRestart = task.autoRestart;
+  newTask.stuckTimeoutSeconds = task.stuckTimeoutSeconds;
+  newTask.maxRestartAttempts = task.maxRestartAttempts;
+
+  task.status = "force-restarted";
+  manager.emitTaskEvent("task.restarted", newTask);
+
+  if (manager.persistTask) {
+    await manager.persistTask(task);
+    await manager.persistTask(newTask);
+  }
+
+  return jsonResponse({
+    status: "restarted",
+    oldTaskId: id,
+    newTaskId: newTask.sessionID,
+    restartCount: newRestartCount,
+  });
+}
+
+export async function handleTaskResume(
+  req: Request,
+  manager: RouteManager,
+  id: string
+): Promise<Response> {
+  let body: any;
+  try {
+    body = await req.json();
+  } catch {
+    return errorResponse("Invalid JSON body", 400);
+  }
+
+  const message = body?.message;
+  if (!message || typeof message !== "string" || message.trim() === "") {
+    return errorResponse("Missing required field: message", 400);
+  }
+
+  const task = manager.getTask(id);
+  if (!task) {
+    return errorResponse("Task not found", 404);
+  }
+
+  const resumableStatuses = ["running", "resumed", "stuck"];
+  if (!resumableStatuses.includes(task.status)) {
+    return errorResponse(
+      `Task cannot be resumed in status: ${task.status}`,
+      400
+    );
+  }
+
+  // Fire-and-forget
+  manager.sendResumePromptAsync(task, message.trim(), {
+    sessionID: "dashboard",
+    messageID: "dashboard-resume",
+    agent: "dashboard",
+  }).catch(() => {});
+
+  return jsonResponse({ status: "resumed" });
+}
+
+export async function handleTaskCancel(
+  req: Request,
+  manager: RouteManager,
+  id: string
+): Promise<Response> {
+  const task = manager.getTask(id);
+  if (!task) {
+    return errorResponse("Task not found", 404);
+  }
+
+  const cancellableStatuses = ["running", "resumed", "stuck"];
+  if (!cancellableStatuses.includes(task.status)) {
+    return errorResponse(
+      `Task cannot be cancelled in status: ${task.status}`,
+      400
+    );
+  }
+
+  await manager.cancelTask(id);
+
+  return jsonResponse({ status: "cancelled" });
 }

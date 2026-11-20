@@ -1,4 +1,4 @@
-export type BackgroundTaskStatus = "running" | "completed" | "error" | "cancelled" | "resumed";
+export type BackgroundTaskStatus = "running" | "completed" | "error" | "cancelled" | "resumed" | "stuck" | "force-restarted" | "auto-restarted";
 export type TaskPhase = "waiting" | "streaming" | "tool";
 
 export interface TaskProgress {
@@ -36,6 +36,14 @@ export interface BackgroundTask {
   pendingResume?: { prompt: string; queuedAt: string };
   instanceId?: string;
   instanceName?: string;
+  lastActivityAt?: number;
+  stuckAt?: number;
+  restartCount?: number;
+  originalTaskId?: string;
+  restartHistory?: Array<{ timestamp: number; reason: string; previousTaskId: string; errorMessage?: string }>;
+  autoRestart?: boolean;
+  stuckTimeoutSeconds?: number;
+  maxRestartAttempts?: number;
 }
 
 export type InstanceInfo = {
@@ -109,7 +117,6 @@ export interface TaskGroupResponse {
 
 export type SSEEventType =
   | "snapshot" | "task.created" | "task.updated"
-  | "task.completed" | "task.error" | "task.cancelled" | "heartbeat";
 
 export interface SnapshotEvent { tasks: BackgroundTask[]; stats: StatsResponse; instanceId?: string; instanceName?: string; }
 export interface TaskDeltaEvent { task: BackgroundTask; }

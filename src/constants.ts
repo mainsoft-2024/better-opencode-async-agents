@@ -129,3 +129,19 @@ export const MAX_TASK_LIMIT = 200;
 
 export const DISCOVERY_SERVICE_TYPE = "bgagent-api";
 export const DISCOVERY_TIMEOUT_MS = 3000;
+
+// =============================================================================
+// Stuck Detection Constants
+// =============================================================================
+
+/** Seconds of inactivity before a task is considered stuck (default: 120s) */
+export const STUCK_TIMEOUT_SECONDS = 120;
+
+/** Minimum task runtime in ms before stuck detection activates */
+export const STUCK_MIN_RUNTIME_MS = 30_000;
+
+/** Maximum number of automatic restart attempts before giving up */
+export const STUCK_MAX_RESTART_ATTEMPTS = 3;
+
+/** Whether auto-restart is enabled by default */
+export const STUCK_AUTO_RESTART_ENABLED = true;

@@ -13,6 +13,9 @@ import {
   handleTaskMessages,
   handleInstances,
   handleInfo,
+  handleTaskRestart,
+  handleTaskResume,
+  handleTaskCancel,
 } from "./routes";
 import { SSEBroadcaster, type SSEDataProvider, handleSSERequest } from "./sse";
 import { InstanceDiscovery } from "./discovery";
@@ -132,6 +135,24 @@ export class StatusApiServer {
             const groupId = groupMatch?.[1];
             if (groupId) {
               return handleTaskGroup(req, manager, groupId);
+            }
+
+            // POST /v1/tasks/:id/restart
+            const restartMatch = req.method === "POST" ? path.match(/^\/v1\/tasks\/([^/]+)\/restart$/) : null;
+            if (restartMatch) {
+              return handleTaskRestart(req, manager, restartMatch[1]!);
+            }
+
+            // POST /v1/tasks/:id/resume
+            const resumeMatch = req.method === "POST" ? path.match(/^\/v1\/tasks\/([^/]+)\/resume$/) : null;
+            if (resumeMatch) {
+              return handleTaskResume(req, manager, resumeMatch[1]!);
+            }
+
+            // POST /v1/tasks/:id/cancel
+            const cancelMatch = req.method === "POST" ? path.match(/^\/v1\/tasks\/([^/]+)\/cancel$/) : null;
+            if (cancelMatch) {
+              return handleTaskCancel(req, manager, cancelMatch[1]!);
             }
 
             return errorResponse("Not Found", 404);

@@ -1,4 +1,4 @@
-import { useConnectionStatusMap, useInstancesById } from "../stores/agentStore";
+import { useConnectionStatusMap, useInstancesById, useStuckTasks } from "../stores/agentStore";
 import type { StatsResponse } from "../types";
 
 type StatusBarProps = {
@@ -49,6 +49,8 @@ export function StatusBar({ stats, isConnected, instanceCount }: StatusBarProps)
   const errorTasks = stats?.byStatus.error ?? 0;
   const completedTasks = stats?.byStatus.completed ?? 0;
 
+  const stuckTasks = useStuckTasks();
+  const stuckCount = stuckTasks.length;
   return (
     <header className="border-b border-gray-800 bg-gray-900 px-4 py-3 text-gray-100">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -67,6 +69,11 @@ export function StatusBar({ stats, isConnected, instanceCount }: StatusBarProps)
         <div className="flex flex-wrap items-center gap-2">
           <StatItem label="Total" value={totalTasks} />
           <StatItem label="Active" value={activeTasks} />
+          {stuckCount > 0 && (
+            <div className="animate-pulse">
+              <StatItem label="Stuck" value={stuckCount} tone="error" />
+            </div>
+          )}
           <StatItem label="Error" value={errorTasks} tone="error" />
           <StatItem label="Completed" value={completedTasks} tone="success" />
         </div>

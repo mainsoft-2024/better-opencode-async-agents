@@ -21,6 +21,11 @@ import {
 } from "./notifications";
 import { pollRunningTasks, startPolling, stopPolling, updateTaskProgress } from "./polling";
 import { filterMessages } from "./messages";
+import { checkIfStuck, markStuck } from "./stuck-detection";
+import {
+  STUCK_MAX_RESTART_ATTEMPTS,
+  STUCK_TIMEOUT_SECONDS,
+} from "../constants";
 import {
   cancelTask,
   checkAndUpdateTaskStatus,
@@ -39,7 +44,9 @@ export type TaskEventType =
   | "task.updated"
   | "task.completed"
   | "task.error"
-  | "task.cancelled";
+  | "task.cancelled"
+  | "task.stuck"
+  | "task.restarted";
 export type TaskEventCallback = (eventType: TaskEventType, task: BackgroundTask) => void;
 
 /**
@@ -155,6 +162,15 @@ export class BackgroundManager {
       progress: task.progress,
       startedAt: task.startedAt,
       batchId: task.batchId,
+      // Stuck detection / restart tracking
+      lastActivityAt: task.lastActivityAt,
+      stuckAt: task.stuckAt,
+      restartCount: task.restartCount,
+      originalTaskId: task.originalTaskId,
+      restartHistory: task.restartHistory,
+      autoRestart: task.autoRestart,
+      stuckTimeoutSeconds: task.stuckTimeoutSeconds,
+      maxRestartAttempts: task.maxRestartAttempts,
     };
     try {
       await saveTask(task.sessionID, persisted);
@@ -336,6 +352,11 @@ export class BackgroundManager {
           batchId: "", // Not persisted
           resumeCount: persisted.resumeCount ?? 0,
           isForked: persisted.isForked ?? false,
+          restartCount: persisted.restartCount ?? 0,
+          restartHistory: persisted.restartHistory ?? [],
+          autoRestart: persisted.autoRestart ?? true,
+          stuckTimeoutSeconds: persisted.stuckTimeoutSeconds ?? STUCK_TIMEOUT_SECONDS,
+          maxRestartAttempts: persisted.maxRestartAttempts ?? STUCK_MAX_RESTART_ATTEMPTS,
         };
         // Add to memory cache
         this.tasks.set(id, task);
@@ -658,6 +679,56 @@ export class BackgroundManager {
       (task) => void this.persistTask(task),
       (eventType, task) => this.emitTaskEvent(eventType, task)
     );
+
+    // Stuck detection: check all running/resumed tasks after each poll cycle
+    for (const task of this.tasks.values()) {
+      if (task.status !== "running" && task.status !== "resumed") continue;
+      if (checkIfStuck(task)) {
+        markStuck(task);
+        this.emitTaskEvent("task.stuck", task);
+        void this.persistTask(task);
+
+        // Auto-restart logic
+        if (
+          task.autoRestart === true &&
+          (task.restartCount ?? 0) < (task.maxRestartAttempts ?? STUCK_MAX_RESTART_ATTEMPTS)
+        ) {
+          try {
+            const restartCount = (task.restartCount ?? 0) + 1;
+            const restartHistory = [
+              ...(task.restartHistory ?? []),
+              {
+                timestamp: Date.now(),
+                reason: "auto-restart" as const,
+                previousTaskId: task.sessionID,
+              },
+            ];
+            const newTask = await this.launch({
+              parentSessionID: task.parentSessionID,
+              parentMessageID: task.parentMessageID,
+              parentAgent: task.parentAgent,
+              description: task.description,
+              prompt: task.prompt,
+              agent: task.agent,
+              fork: task.isForked,
+            });
+            // Apply restart metadata to the newly created task
+            newTask.restartCount = restartCount;
+            newTask.originalTaskId = task.originalTaskId ?? task.sessionID;
+            newTask.restartHistory = restartHistory;
+            newTask.autoRestart = task.autoRestart;
+            newTask.stuckTimeoutSeconds = task.stuckTimeoutSeconds ?? STUCK_TIMEOUT_SECONDS;
+            newTask.maxRestartAttempts = task.maxRestartAttempts ?? STUCK_MAX_RESTART_ATTEMPTS;
+            task.status = "auto-restarted";
+            task.completedAt = new Date().toISOString();
+            void this.persistTask(task);
+            this.emitTaskEvent("task.restarted", newTask);
+          } catch {
+            // Auto-restart failed — leave task as stuck
+          }
+        }
+      }
+    }
   }
 
   private showProgressToast(tasks: BackgroundTask[]): void {

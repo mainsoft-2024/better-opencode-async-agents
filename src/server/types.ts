@@ -88,6 +88,8 @@ export type SSEEventType =
   | "task.completed"
   | "task.error"
   | "task.cancelled"
+  | "task.stuck"
+  | "task.restarted"
   | "heartbeat";
 
 export interface SnapshotEvent {
